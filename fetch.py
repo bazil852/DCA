@@ -275,7 +275,9 @@ def lambda_function(client,strategy_id):
                                 # print(orderType,purple_action," Order filled at Price: ", order['price']) 
                                 logs+=orderType+purple_action+"Safety Order Placed at Price: "+ str(close[8])+" ("+str(len(buy_orders))+" of "+str(max_buy_orders)+")"+"\n"
                                 logs+=orderType+purple_action+" Order filled at Price: "+ str(order['price'])+"\n"
-                            if (len(multiplier)<= 0):
+                            if (str (multiplier) == ''):
+                                safety_order = safety_order
+                            else:
                                 safety_order *= float(multiplier)
                             buy_orders.append(order)
                             buy_candles.append([high[8],low[8],close[8],open_price[8]])
@@ -338,7 +340,9 @@ def lambda_function(client,strategy_id):
                                 logs+=orderType+red_action+" Order filled at Price: "+ str(order['price'])+"\n"
 
 
-                            if (len(multiplier)<= 0):
+                            if (str (multiplier) == ''):
+                                safety_order = safety_order
+                            else:
                                 safety_order *= float(multiplier)
                             buy_orders.append(order)
                             buy_candles.append([high[8],low[8],close[8],open_price[8]])
@@ -401,7 +405,9 @@ def lambda_function(client,strategy_id):
                                 # print(orderType,blue_action," Order filled at Price: ", order['price']) 
                                 logs+=orderType+blue_action+"Safety Order Placed at Price: "+ str(close[8])+" ("+str(len(buy_orders))+" of "+str(max_buy_orders)+")"+"\n"
                                 logs+=orderType+blue_action+" Order filled at Price: "+ str(order['price'])+"\n"
-                            if (len(multiplier)<= 0):
+                            if (str (multiplier) == ''):
+                                safety_order = safety_order
+                            else:
                                 safety_order *= float(multiplier)
                             buy_orders.append(order)
                             buy_candles.append([high[8],low[8],close[8],open_price[8]])
@@ -466,7 +472,9 @@ def lambda_function(client,strategy_id):
                                 logs+=orderType+green_action+"Safety Order Placed at Price: "+ str(close[8])+" ("+str(len(buy_orders))+" of "+str(max_buy_orders)+")"+"\n"
                                 logs+=orderType+green_action+" Order filled at Price: "+ str(order['price'])+"\n"
                             
-                            if (len(multiplier)<= 0):
+                            if (str (multiplier) == ''):
+                                safety_order = safety_order
+                            else:
                                 safety_order *= float(multiplier)
                             buy_orders.append(order)
                             buy_candles.append([high[8],low[8],close[8],open_price[8]])
