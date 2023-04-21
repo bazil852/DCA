@@ -517,7 +517,7 @@ def lambda_function(client,strategy_id):
         # print("Order",order)
         # exit()
         iterate=0
-        while (time.time() - start_time < 30) :
+        while (time.time() - start_time < 50) :
             new_buy_price=0
             if (do['state']=='off'):
                 print ("State is off check db. Waiting for 3 seconds")
@@ -561,7 +561,7 @@ def lambda_function(client,strategy_id):
                         logs+="Safety Order Volume is : "+str(total)+str(profitC)+"\n"
                     # print ("Total Volume for orders is ",round(float(tickerAmount)*float(current_price),3))
                     logs+="Total Volume for orders is "+str(round(float(tickerAmount)*float(current_price),3))+"\n"
-                print (current_price," ",new_buy_price," ",take_profit_percentage)
+                # print (current_price," ",new_buy_price," ",take_profit_percentage)
                 if ((current_price - new_buy_price) / new_buy_price >= take_profit_percentage) and ProfitType=='Fixed':
                     exchange.create_order(symbol, orderType, 'sell', tickerAmount, {'price': None})
                     # print("Profit Taken at: ", current_price)
