@@ -109,6 +109,10 @@ def lambda_function(client,strategy_id):
     buyOn=do['buyOnCondition']
     ignore=do['ignoreCondition']
 
+    if (str (multiplier) == ''):
+        multiplier = 1
+    else:
+        multiplier = float(multiplier) 
     try:
         if (buyOn == None or len (buyOn)==0):
             buyOn=1
