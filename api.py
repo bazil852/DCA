@@ -8,7 +8,7 @@ app = FastAPI()
 
 
 origins = [
-    "https://funny-hamster-41a977.netlify.app",  # Replace this with your React app's origin
+    "https://funny-hamster-41a977.netlify.app/",  # Replace this with your React app's origin
 ]
 
 app.add_middleware(
