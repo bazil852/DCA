@@ -1,8 +1,8 @@
 ccxt==2.7.44
 pymongo==4.3.3
-fastapi==0.95.0
+fastapi
 pydantic==1.10.7
-starlette==0.26.1
+starlette
 gunicorn==20.1.0
 uvicorn==0.21.1
 celery
