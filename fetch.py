@@ -92,6 +92,11 @@ def lambda_function(client,strategy_id):
     order_size = do['orderSize']
     safety_order = do['safetyOrderSize']
     max_buy_orders = int(do['maxOrders'])
+    try:
+        max_buy_orders_float = float(do['maxOrders'])
+        max_buy_orders = int(max_buy_orders_float)
+    except ValueError:
+        print("Invalid input: do['maxOrders'] must be a numeric value.")
     # symbol = do['strategyPair']+'/USDT'
     symbol = do['strategyPair']
     timeframe = '1m'
