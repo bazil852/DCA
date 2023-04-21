@@ -91,11 +91,12 @@ def lambda_function(client,strategy_id):
     do = strats.find_one(ObjectId(strategyID))
     order_size = do['orderSize']
     safety_order = do['safetyOrderSize']
-    max_buy_orders = int(do['maxOrders'])
+    # max_buy_orders = int(do['maxOrders'])
     try:
         max_buy_orders_float = float(do['maxOrders'])
         max_buy_orders = int(max_buy_orders_float)
     except ValueError:
+        max_buy_orders=0
         print("Invalid input: do['maxOrders'] must be a numeric value.")
     # symbol = do['strategyPair']+'/USDT'
     symbol = do['strategyPair']
