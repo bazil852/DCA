@@ -1,1 +1,2 @@
-web: gunicorn -w 4 -k uvicorn.workers.UvicornWorker api:app
+web: gunicorn api:app
+worker: celery -A celery_worker worker --loglevel=info
