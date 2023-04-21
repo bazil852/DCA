@@ -2,7 +2,6 @@ from fastapi import FastAPI
 # import pymongo
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from celery import Celery
 from celery_worker import run_bot_instance  # Import the Celery task
 
 app = FastAPI()
