@@ -103,12 +103,15 @@ def lambda_function(client,strategy_id):
     buyOn=do['buyOnCondition']
     ignore=do['ignoreCondition']
 
-    if (buyOn == None or len (buyOn)==0):
+    try:
+        if (buyOn == None or len (buyOn)==0):
+            buyOn=1
+        if (ignore == None or len (buyOn)==0):
+            ignore = 0
+        print(int(buyOn),int(ignore))
+    except Exception as e:
         buyOn=1
-    if (ignore == None or len (buyOn)==0):
         ignore = 0
-    print(int(buyOn),int(ignore))
-
 
 
     # Temp Variables
