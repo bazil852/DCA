@@ -300,23 +300,33 @@ def lambda_function(client,strategy_id):
                                 first_order_candle_body_price = open_prices
                                 first_order_candle_wick_price = high
                             # Place a custom order
-                            try:
-                                order = exchange.create_order(
-                                    symbol,
-                                    orderType,
-                                    action,
-                                    str(round((float(current_order_size) / close), 3))
-                                )
-                                order_counter+=1
+                            order_placed = False
+                            retries = 5
+
+                            for _ in range(retries):
+                                try:
+                                    order = exchange.create_order(
+                                        symbol,
+                                        orderType,
+                                        action,
+                                        str(round((float(current_order_size) / close), 3))
+                                    )
+                                    order_placed = True
+                                    break
+                                except Exception as e:
+                                    print(f"Error placing order (attempt {_ + 1}): {e}")
+                                    logs+="Error Placing order Retrying"
+                                    time.sleep(1)  # Optional: Add a short delay between attempts
+
+                            if order_placed:
+                                order_counter += 1
                                 if action == 'buy':
                                     buy_orders.append(order)
                                 elif action == 'sell':
                                     sell_orders.append(order)
-                                # print(f"{action.capitalize()} order placed: {close} for {current_order_size}")
-                                logs+= str(action.capitalize()) + " order placed: "+ str(close)+ " for "+ str(current_order_size)+'\n'
-                            except Exception as e:
-                                print ("Error placing order", e)
-                                # logs += "Error Placing order "+str (e)+'\n'
+                                logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
+                            else:
+                                print(f"Failed to place {action} order after {retries} attempts")
                     elif conditions_hit% int (buyOn) !=0 or price_check(buy_orders, close)!=False:
                         # print ("buy on condition ignore : ",conditions_hit,"%",buyOn,"=",conditions_hit% int (buyOn))
                         # print ("price returned by Price check ",price_check(buy_orders,close))
