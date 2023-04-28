@@ -181,8 +181,7 @@ def lambda_function(client,strategy_id):
         'timeout': 30000,  # Increase timeout to 30 seconds
     })
     exchange.set_sandbox_mode(True)
-    exchange.options['recvWindow'] = 5000  # Set the allowed timestamp drift to 5 seconds
-
+    
     print ( "Validating Data")
     print (order_size)
     print (safety_order)
@@ -242,7 +241,6 @@ def lambda_function(client,strategy_id):
         logs+="================================================"+"\n"
         va,av = pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high,open_price, low, pvsra_close, close_prices)
         utc_time = datetime.datetime.utcfromtimestamp(timestamp[8] / 1000.0)
-        print (va, av)
         # print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_price[8],"  High:",high[8],"  Low:",low[8],"  Close:",close[8],"  \nCandle Type: ",va,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume[8])
         logs+="Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_price[8])+"  High:"+str(high[8])+"  Low:"+str(low[8])+"  Close:"+str(close[8])+"  \nCandle Type: "+va+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume[8])+"\n"
         # print("Open:",open_price[8],"  High:",high[8],"  Low:",low[8],"Close: ",close[8],"Volume: ",pvsra_volume[8],"Color: ",va)
@@ -264,7 +262,7 @@ def lambda_function(client,strategy_id):
                         if (price_check(buy_orders,close[8])==False or buy_on_counter%int(buyOn)!=0):                   
                             if (len(buy_orders)==0):
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, purple_action, str(round((float(order_size)/close[8]),3)),params)
                                 # print(orderType,purple_action," Order Placed at Price: ", close[8])
@@ -274,7 +272,7 @@ def lambda_function(client,strategy_id):
                             
                             else:
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, purple_action, str(round((float(total)/close[8]),3)),params)
                                 # print(orderType,purple_action,"Safety Order Placed at Price: ", close[8]," (",len(buy_orders)," of ",max_buy_orders,")")
@@ -298,7 +296,7 @@ def lambda_function(client,strategy_id):
                                 new_buy_price = float (pos['entryPrice'])
                                 break
                         params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                         order = exchange.create_order(symbol, orderType, purple_action, float(round(tickerAmount,3)),params)
                         temp_price=order['price']            
@@ -328,7 +326,7 @@ def lambda_function(client,strategy_id):
                         if (price_check(buy_orders,close[8])==False or buy_on_counter%int(buyOn)!=0):
                             if (len(buy_orders)==0):
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, red_action, str(round((float(order_size)/close[8]),3)),params)
                                 # print(orderType,red_action," Order Placed at Price: ", close[8])
@@ -337,7 +335,7 @@ def lambda_function(client,strategy_id):
                                 logs+=orderType+red_action+" Order filled at Price: "+ str(order['price'])+"\n"
                             else:
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, red_action, str(round((float(total)/close[8]),3)),params)
                                 # print(orderType,red_action,"Safety Order Placed at Price: ", close[8]," (",len(buy_orders)," of ",max_buy_orders,")") 
@@ -364,7 +362,7 @@ def lambda_function(client,strategy_id):
                                 new_buy_price = float (pos['entryPrice'])
                                 break
                         params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                         order = exchange.create_order(symbol, orderType, red_action, tickerAmount,params)
                         temp_price=order['price']            
@@ -395,7 +393,7 @@ def lambda_function(client,strategy_id):
                         if (price_check(buy_orders,close[8])==False or buy_on_counter%int(buyOn)!=0):
                             if (len(buy_orders)==0):
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, blue_action, str(round((float(order_size)/close[8]),3)),params)
                                 # print(orderType,blue_action," Order Placed at Price: ", close[8])
@@ -404,7 +402,7 @@ def lambda_function(client,strategy_id):
                                 logs+=orderType+blue_action+" Order filled at Price: "+ str(order['price'])+"\n"
                             else:
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, blue_action, str(round((float(total)/close[8]),3)),params)
                                 # print(orderType,blue_action,"Safety Order Placed at Price: ", close[8]," (",len(buy_orders)," of ",max_buy_orders,")")
@@ -429,7 +427,7 @@ def lambda_function(client,strategy_id):
                                 new_buy_price = float (pos['entryPrice'])
                                 break
                         params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                         order = exchange.create_order(symbol, orderType, blue_action, tickerAmount,params)
                         temp_price=order['price']            
@@ -460,7 +458,7 @@ def lambda_function(client,strategy_id):
                         if (price_check(buy_orders,close[8])==False or buy_on_counter%int(buyOn)!=0):                     
                             if (len(buy_orders)==0):
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, green_action, str(round((float(order_size)/close[8]),3)),params)
                                 # print(orderType,green_action," Order Placed at Price: ", close[8])
@@ -470,7 +468,7 @@ def lambda_function(client,strategy_id):
                                 
                             else:
                                 params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                                 order = exchange.create_order(symbol, orderType, green_action, str(round((float(total)/close[8]),3)),params)
                                 # print(orderType,green_action,"Safety Order Placed at Price: ", close[8]," (",len(buy_orders)," of ",max_buy_orders,")")
@@ -495,7 +493,7 @@ def lambda_function(client,strategy_id):
                                 new_buy_price = float (pos['entryPrice'])
                                 break
                         params = {
-                                    'timestamp': exchange.nonce()
+                                    'timestamp': int(time.time() * 1000)
                                 }
                         order = exchange.create_order(symbol, orderType, blue_action, tickerAmount,params)
                         temp_price=order['price']            
@@ -519,7 +517,18 @@ def lambda_function(client,strategy_id):
         # print("Order",order)
         # exit()
         iterate=0
-        while (time.time()-start_time <60) :
+        while (True) :
+            current_time = time.time()
+            elapsed_time = current_time - start_time
+            seconds_to_nearest_minute = 60 - (int(current_time) % 60)
+
+            if elapsed_time < seconds_to_nearest_minute - 6:
+                # Your code here
+                pass
+            else:
+                break
+
+            time.sleep(1)  # Optional sleep to reduce CPU usage
             new_buy_price=0
             if (do['state']=='off'):
                 print ("State is off check db. Waiting for 3 seconds")
@@ -539,7 +548,6 @@ def lambda_function(client,strategy_id):
                 new_buy_price=new_buy_price/len(buy_orders)
                 current_price = exchange.fetch_ticker(symbol)['last']
                 orders = exchange.fetch_balance()
-                print ("Order is: ",buy_orders)
                 tickerAmount=''
                 for pos in orders['info']['positions']:
                     if pos['symbol']==symbol.replace('/',''):
@@ -583,11 +591,6 @@ def lambda_function(client,strategy_id):
                             logs+="Profit Taken at: "+str(order)+"\n"
 
             iterate+=1
-                
-
-            
-        
-        
         print (logs)
         collection = client['test']
         strats=collection['strategies']
