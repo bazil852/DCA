@@ -4,9 +4,12 @@ import ccxt
 import time
 import datetime
 from bson.objectid import ObjectId
+import re
 
 
 
+def remove_extra_br(s):
+    return re.sub(r'(<br />){3,}', '<br /><br />', s)
 
 
 def fetch_with_retry(exchange, symbol, timeframe, retries=3, delay=5):
@@ -380,7 +383,7 @@ def lambda_function(client,strategy_id):
         strategyID=strategy_id
         do = strats.find_one(ObjectId(strategyID))
         logs=logs.replace('\n','<br />')
+        logs = remove_extra_br(logs)
         update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
         result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
-
