@@ -269,8 +269,8 @@ def lambda_function(client,strategy_id):
                 # Call the pvsra_indicator function to determine the type of candle
                 candle_type,av = pvsra_indicator(overridesym, pvsra_volume_array, volume_array, pvsra_high_array, pvsra_low_array, high_array, open_price, low_array, close_prices_array, close_prices_array)
                 utc_time = datetime.datetime.utcfromtimestamp(timestamp / 1000.0)
-                print ("============================")
-                print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_prices,"  High:",high,"  Low:",low,"  Close:",close,"  \nCandle Type: ",candle_type,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume)
+                # print ("============================")
+                # print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_prices,"  High:",high,"  Low:",low,"  Close:",close,"  \nCandle Type: ",candle_type,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume)
                 logs += "============================\n"
                 logs+="Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_price)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n"
                 # Check if the candle type matches any of the conditions
@@ -309,14 +309,14 @@ def lambda_function(client,strategy_id):
                                     buy_orders.append(order)
                                 elif action == 'sell':
                                     sell_orders.append(order)
-                                print(f"{action.capitalize()} order placed: {close} for {current_order_size}")
-                                logs+= action.capitalize() + " order placed: "+ close+ " for "+ str(current_order_size)+'\n'
+                                # print(f"{action.capitalize()} order placed: {close} for {current_order_size}")
+                                logs+= str(action.capitalize()) + " order placed: "+ str(close)+ " for "+ str(current_order_size)+'\n'
                             except Exception as e:
                                 print ("Error placing order", e)
-                                # logs += str (e)+'\n'
+                                # logs += "Error Placing order "+str (e)+'\n'
                     elif conditions_hit% int (buyOn) !=0 or price_check(buy_orders, close)!=False:
-                        print ("buy on condition ignore : ",conditions_hit,"%",buyOn,"=",conditions_hit% int (buyOn))
-                        print ("price returned by Price check ",price_check(buy_orders,close))
+                        # print ("buy on condition ignore : ",conditions_hit,"%",buyOn,"=",conditions_hit% int (buyOn))
+                        # print ("price returned by Price check ",price_check(buy_orders,close))
                         logs += "buy on condition ignore : " + str(conditions_hit)+"%"+str(buyOn)+"="+str((conditions_hit)% int (buyOn)) + '\n'
                         logs += "price returned by Price check " + str(price_check(buy_orders,close))+'\n'
 
