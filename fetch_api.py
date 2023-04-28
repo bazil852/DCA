@@ -374,5 +374,13 @@ def lambda_function(client,strategy_id):
                     except Exception as e:
                         print ("Error in Taking profit: ",e)
                         log += str(e) +'\n'
+        print (logs)
+        collection = client['test']
+        strats=collection['strategies']
+        strategyID=strategy_id
+        do = strats.find_one(ObjectId(strategyID))
+        logs=logs.replace('\n','<br />')
+        update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
+        result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 
