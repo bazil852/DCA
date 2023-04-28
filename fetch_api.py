@@ -313,7 +313,7 @@ def lambda_function(client,strategy_id):
                                 logs+= action.capitalize() + " order placed: "+ close+ " for "+ str(current_order_size)+'\n'
                             except Exception as e:
                                 print ("Error placing order", e)
-                                logs += str (e)+'\n'
+                                # logs += str (e)+'\n'
                     elif conditions_hit% int (buyOn) !=0 or price_check(buy_orders, close)!=False:
                         print ("buy on condition ignore : ",conditions_hit,"%",buyOn,"=",conditions_hit% int (buyOn))
                         print ("price returned by Price check ",price_check(buy_orders,close))
@@ -335,7 +335,7 @@ def lambda_function(client,strategy_id):
                 order_data = exchange.fetch_order(order_id, symbol)
             except Exception as e:
                 print (e)
-                logs += str (e)+'\n'
+                # logs += str (e)+'\n'
                 continue
             if order_data['status'] == 'closed':
                 total_price += order_data['average'] * order_data['filled']
@@ -345,7 +345,7 @@ def lambda_function(client,strategy_id):
                     current_price = exchange.fetch_ticker(symbol)['last']
                 except Exception as e:
                     print (e)
-                    logs += str (e)+'\n'
+                    # logs += str (e)+'\n'
                     continue
                 
                 if total_filled > 0:
@@ -373,7 +373,7 @@ def lambda_function(client,strategy_id):
                         buy_orders.remove(order)
                     except Exception as e:
                         print ("Error in Taking profit: ",e)
-                        log += str(e) +'\n'
+                        # log += str(e) +'\n'
         print (logs)
         collection = client['test']
         strats=collection['strategies']
