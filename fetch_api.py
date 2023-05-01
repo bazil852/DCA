@@ -343,6 +343,7 @@ def lambda_function(client,strategy_id):
                     if conditions_ignored < int(ignore):
                         conditions_ignored += 1
                         print(f"Ignored condition {conditions_ignored}")
+                        logs += "Ignored condition " + str(conditions_ignored) + '\n'
                     elif conditions_hit % int(buyOn) == 0 and price_check(buy_orders, close)==False and order_counter<max_buy_orders:
                     # Place the order using ccxt
                         if action == 'buy' or action == 'sell':
