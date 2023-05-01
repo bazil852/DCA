@@ -12,17 +12,10 @@ def remove_extra_br(s):
     return re.sub(r'(<br />){3,}', '<br /><br />', s)
 
 
-def calculate_sma(prices, period):
-    if len(prices) < period:
-        return None
-    return sum(prices[-period:]) / period
-
-
-
-def fetch_with_retry(exchange, symbol, timeframe,numb, retries=3, delay=5):
+def fetch_with_retry(exchange, symbol, timeframe, retries=3, delay=5):
     for attempt in range(retries):
         try:
-            return exchange.fetch_ohlcv(symbol, timeframe, limit=numb)
+            return exchange.fetch_ohlcv(symbol, timeframe, limit=10)
         except ccxt.RequestTimeout as e:
             if attempt < retries - 1:
                 time.sleep(delay)
@@ -42,13 +35,13 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
     hivalue2 = max(value2, max(pvsra_volume[-10:]) * (max(pvsra_high[-10:]) - min(pvsra_low[-10:])) if overridesym else max(volume[-10:]) * (max(high[-10:]) - min(low[-10:])))
     va='unidentified'
     if (pvsra_close[8] > open_prices[8]):
-        va='RC'
+        va='GC'
         if (pvsra_volume[8] <= (av*2) and pvsra_volume[8] >= (av*1.5)):
             va='BVC'
         elif (pvsra_volume[8] > (av*2 ) ) :
             va ='GVC'
     else:
-        va='GC'
+        va='RC'
         if (pvsra_volume[8] <= (av*2) and pvsra_volume[8] >= (av*1.5)):
             va='PVC'
         elif (pvsra_volume[8] > (av*2 )):
@@ -104,7 +97,7 @@ def lambda_function(client,strategy_id):
     max_buy_orders = int(do['maxOrders'])
     # symbol = do['strategyPair']+'/USDT'
     symbol = do['strategyPair']
-    timeframe = '1h'
+    timeframe = '1m'
     multiplier = do['candleSizeAndVol']
     stratType= do['strategyType']
     orderType=do['orderType']
@@ -117,13 +110,11 @@ def lambda_function(client,strategy_id):
         multiplier= float(multiplier)
     except Exception as e:
         print(e)
-        multiplier=1
+        multiplier=0
     try:
         buyOn= float(buyOn)
     except Exception as e:
         print(e)
-        buyOn=1
-    if (buyOn<=0):
         buyOn=1
     try:
         ignore= float(ignore)
@@ -165,54 +156,25 @@ def lambda_function(client,strategy_id):
     
     conditions_hit = 0
     conditions_ignored = 0
-    enabledvector= 'False'
-    enableMA='False'
-    red_action="None"
-    green_action="None"
-    blue_action="None"
-    green_action="None"
-    MA_val=[]
-    MA_cond=[]
-    timeframe_vector='1h'
-    timeframe_MA=[]
 
-    print(do['indicators'][0]['chooseIndicatorValue'])
-    for indicators in do['indicators']:
-        if (indicators['chooseIndicatorValue']=='Vector Candle'):
+
+
+    # Fetching Inicators
+    try:
+        if (do['indicator']=='Vector Candle'):
             enabledvector='True'
-            timeframe_vector=indicators['timeFrameValue']
-            for candle in indicators['candleValue']:
-                if candle == 'red':
-                    if (stratType=='Long'):
-                        red_action='buy'
-                    elif (stratType=='Short'):
-                        red_action='buy'
-                if candle == 'purple':
-                    if (stratType=='Long'):
-                        purple_action='buy'
-                    elif (stratType=='Short'):
-                        purple_action='buy'
-                if candle == 'blue':
-                    if (stratType=='Long'):
-                        blue_action='buy'
-                    elif (stratType=='Short'):
-                        blue_action='buy'
-                if candle == 'green':
-                    if (stratType=='Long'):
-                        blue_action='buy'
-                    elif (stratType=='Short'):
-                        blue_action='buy'
-        elif (indicators['chooseIndicatorValue']=='Moving Averages'):
-            enableMA='True'
-            timeframe_MA.append( indicators['timeFrameValue'])
-            MA_val.append(int(indicators['masValue']))
-            MA_cond.append(indicators['masCondition'])
-
-
-
-
-    
-
+            red_action=do['indicatorValues']['redAction']
+            blue_action=do['indicatorValues']['blueAction']
+            green_action=do['indicatorValues']['greenAction']
+            purple_action=do['indicatorValues']['purpleAction']
+        else:
+            enabledvector='False'
+            red_action='none'
+            blue_action='none'
+            green_action='none'
+            purple_action='none'
+    except Exception as e:
+        print("Error aa gya" , e)
 
     ProfitType=do['takeProfit']
     take_profit_percentage=0
@@ -254,12 +216,6 @@ def lambda_function(client,strategy_id):
     print (blue_action, type(blue_action))
     print (green_action, type(green_action))
     print (symbol.replace('/',''))
-    print (MA_cond)
-    print (MA_val,type(MA_val))
-    print (timeframe_MA)
-    print (timeframe_vector)
-    print(buyOn, type(buyOn))
-
 
     logs= str(order_size)+'<br />'+str(safety_order)+'<br />'+str(multiplier)+'<br />'+str(max_buy_orders)+'<br />'+str(timeframe)+'<br />'+str(orderType)+'<br />'+str(red_action)+'<br />'+str(purple_action)+'<br />'+str(blue_action)+'<br />'+str(green_action)+'<br />'
     
@@ -291,19 +247,13 @@ def lambda_function(client,strategy_id):
                     return
                 print("State changed :)")
         except Exception as e:
-            print("Error")
             print (e)
         try:
-            psvra_candles=fetch_with_retry(exchange, symbol, timeframe_vector,10)
+            psvra_candles=fetch_with_retry(exchange, symbol, timeframe)
         except Exception as e:
-            print("Error")
             print (e)
         ohlcv = psvra_candles[-2]
         timestamp, open_prices, high, low, close, volume = ohlcv
-
-
-        # Calculate the 50-period SMA
-
         if enabledvector == 'True':
             # Fetch the latest candlestick data
             # print ("time",last_candle_timestamp, timestamp)
@@ -325,7 +275,7 @@ def lambda_function(client,strategy_id):
                 # print ("============================")
                 # print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_prices,"  High:",high,"  Low:",low,"  Close:",close,"  \nCandle Type: ",candle_type,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume)
                 logs += "============================\n"
-                logs+="Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n"
+                logs+="Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_price)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n"
                 # Check if the candle type matches any of the conditions
                 action = None
                 if candle_type == 'RVC' and red_action != 'none':
@@ -352,95 +302,41 @@ def lambda_function(client,strategy_id):
                             # Place a custom order
                             order_placed = False
                             retries = 5
-                            if enableMA == 'True':
-                                all_conditions_met = True
-                                sma_values = []
 
-                                for cond, val, tf in zip(MA_cond, MA_val, timeframe_MA):
-                                    print (tf, val)
-                                    ohlcv_MA = fetch_with_retry(exchange, symbol, tf, val)
-                                    closing_prices = [x[4] for x in ohlcv_MA]
+                            for _ in range(retries):
+                                try:
+                                    order = exchange.create_order(
+                                        symbol,
+                                        orderType,
+                                        action,
+                                        str(round((float(current_order_size) / close), 3))
+                                    )
+                                    order_placed = True
+                                    break
+                                except Exception as e:
+                                    print(f"Error placing order (attempt {_ + 1}): {e}")
+                                    logs+="Error Placing order Retrying"
+                                    time.sleep(1)  # Optional: Add a short delay between attempts
 
-                                    sma = calculate_sma(closing_prices, val)
-                                    sma_values.append(sma)
-
-                                    if cond == 'Above' and close <= sma:
-                                        all_conditions_met = False
-                                        break
-                                    elif cond == 'Below' and close >= sma:
-                                        all_conditions_met = False
-                                        break
-
-                                if all_conditions_met:
-                                    for _ in range(retries):
-                                        try:
-                                            order = exchange.create_order(
-                                                symbol,
-                                                orderType,
-                                                action,
-                                                str(round((float(current_order_size) / close), 3))
-                                            )
-                                            order_placed = True
-                                            if len(buy_orders) == 1:
-                                                current_order_size = safety_order
-                                            elif len(buy_orders) > 1:
-                                                current_order_size *= multiplier
-                                            break
-                                        except Exception as e:
-                                            print(f"Error placing order (attempt {_ + 1}): {e}")
-                                            logs += "Error Placing order Retrying"
-                                            time.sleep(1)
-
-                                    if order_placed:
-                                        order_counter += 1
-                                        if action == 'buy':
-                                            buy_orders.append(order)
-                                        elif action == 'sell':
-                                            sell_orders.append(order)
-                                        logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
-                                        logs += "Order Filled for " + str(order['price']) + "\n"
-                                    else:
-                                        print(f"Failed to place {action} order after {retries} attempts")
-                                else:
-                                    logs += "Moving average conditions not met for all MAs: " + ', '.join([f"{cond} MA {sma}" for cond, sma in zip(MA_cond, sma_values)]) + '\n'
+                            if order_placed:
+                                order_counter += 1
+                                if action == 'buy':
+                                    buy_orders.append(order)
+                                elif action == 'sell':
+                                    sell_orders.append(order)
+                                logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
                             else:
-                                for _ in range(retries):
-                                    try:
-                                        order = exchange.create_order(
-                                            symbol,
-                                            orderType,
-                                            action,
-                                            str(round((float(current_order_size) / close), 3))
-                                        )
-                                        order_placed = True
-                                        if len(buy_orders) == 1:
-                                            current_order_size = safety_order
-                                        elif len(buy_orders) >1:
-                                            current_order_size *= multiplier
-                                        break
-                                    except Exception as e:
-                                        print(f"Error placing order (attempt {_ + 1}): {e}")
-                                        logs+="Error Placing order Retrying"
-                                        time.sleep(1)  # Optional: Add a short delay between attempts
-
-                                if order_placed:
-                                    order_counter += 1
-                                    if action == 'buy':
-                                        buy_orders.append(order)
-                                    elif action == 'sell':
-                                        sell_orders.append(order)
-                                    logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
-                                    logs += "Order Filled for " + str(order['price'])+"\n"
-                                else:
-                                        print(f"Failed to place {action} order after {retries} attempts")
-
+                                print(f"Failed to place {action} order after {retries} attempts")
                     elif conditions_hit% int (buyOn) !=0 or price_check(buy_orders, close)!=False:
                         # print ("buy on condition ignore : ",conditions_hit,"%",buyOn,"=",conditions_hit% int (buyOn))
                         # print ("price returned by Price check ",price_check(buy_orders,close))
                         logs += "buy on condition ignore : " + str(conditions_hit)+"%"+str(buyOn)+"="+str((conditions_hit)% int (buyOn)) + '\n'
                         logs += "price returned by Price check " + str(price_check(buy_orders,close))+'\n'
 
-
+        if len(buy_orders) == 1:
+            current_order_size = safety_order
+        elif len(buy_orders) >1:
+            current_order_size *= multiplier
 
         # Monitor orders and check for 3% profit
         total_price = 0
@@ -491,18 +387,17 @@ def lambda_function(client,strategy_id):
                     except Exception as e:
                         print ("Error in Taking profit: ",e)
                         # log += str(e) +'\n'
-        if (len(logs)>2):
-            print (logs)
-            collection = client['test']
-            strats=collection['strategies']
-            strategyID=strategy_id
-            do = strats.find_one(ObjectId(strategyID))
-            logs=logs.replace('\n','<br />')
-            logs = remove_extra_br(logs)
-            update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
-            result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
+        print (logs)
+        collection = client['test']
+        strats=collection['strategies']
+        strategyID=strategy_id
+        do = strats.find_one(ObjectId(strategyID))
+        logs=logs.replace('\n','<br />')
+        logs = remove_extra_br(logs)
+        update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
+        result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 # 644f90f5b40d77067c660398
 client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-lambda_function( client, '64502b582a7f1138d043f5b2')
+lambda_function( client, '644f90f5b40d77067c660398')
