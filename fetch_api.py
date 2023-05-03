@@ -340,7 +340,7 @@ def lambda_function(client,strategy_id):
                 
                 if action is not None:
                     conditions_hit += 1
-                    if conditions_ignored < int(ignore):
+                    if conditions_ignored < int(ignore) and int(ignore)>0:
                         conditions_ignored += 1
                         print(f"Ignored condition {conditions_ignored}")
                         logs += "Ignored condition " + str(conditions_ignored) + '\n'
