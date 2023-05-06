@@ -503,7 +503,7 @@ def lambda_function(client,strategy_id):
             update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
             result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
-# 644f90f5b40d77067c660398
-client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# # 644f90f5b40d77067c660398
+# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-lambda_function( client, '64502b582a7f1138d043f5b2')
+# lambda_function( client, '64502b582a7f1138d043f5b2')
