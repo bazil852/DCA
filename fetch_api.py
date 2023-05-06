@@ -42,13 +42,13 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
     hivalue2 = max(value2, max(pvsra_volume[-10:]) * (max(pvsra_high[-10:]) - min(pvsra_low[-10:])) if overridesym else max(volume[-10:]) * (max(high[-10:]) - min(low[-10:])))
     va='unidentified'
     if (pvsra_close[8] > open_prices[8]):
-        va='RC'
+        va='RVC'
         if (pvsra_volume[8] <= (av*2) and pvsra_volume[8] >= (av*1.5)):
             va='BVC'
         elif (pvsra_volume[8] > (av*2 ) ) :
             va ='GVC'
     else:
-        va='GC'
+        va='PVC'
         if (pvsra_volume[8] <= (av*2) and pvsra_volume[8] >= (av*1.5)):
             va='PVC'
         elif (pvsra_volume[8] > (av*2 )):
@@ -170,7 +170,7 @@ def lambda_function(client,strategy_id):
     red_action="None"
     green_action="None"
     blue_action="None"
-    green_action="None"
+    purple_action="None"
     MA_val=[]
     MA_cond=[]
     timeframe_vector='1h'
@@ -199,9 +199,9 @@ def lambda_function(client,strategy_id):
                         blue_action='buy'
                 if candle == 'green':
                     if (stratType=='Long'):
-                        blue_action='buy'
+                        green_action='buy'
                     elif (stratType=='Short'):
-                        blue_action='buy'
+                        green_action='buy'
         elif (indicators['chooseIndicatorValue']=='Moving Averages'):
             enableMA='True'
             timeframe_MA.append( indicators['timeFrameValue'])
@@ -503,7 +503,7 @@ def lambda_function(client,strategy_id):
             update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
             result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
-# # 644f90f5b40d77067c660398
-# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# 644f90f5b40d77067c660398
+client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '64502b582a7f1138d043f5b2')
+lambda_function( client, '6454267fbb456701757d9089')
