@@ -42,13 +42,13 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
     hivalue2 = max(value2, max(pvsra_volume[-10:]) * (max(pvsra_high[-10:]) - min(pvsra_low[-10:])) if overridesym else max(volume[-10:]) * (max(high[-10:]) - min(low[-10:])))
     va='unidentified'
     if (pvsra_close[8] > open_prices[8]):
-        va='RVC'
+        va='RC'
         if (pvsra_volume[8] <= (av*2) and pvsra_volume[8] >= (av*1.5)):
             va='BVC'
         elif (pvsra_volume[8] > (av*2 ) ) :
             va ='GVC'
     else:
-        va='PVC'
+        va='GC'
         if (pvsra_volume[8] <= (av*2) and pvsra_volume[8] >= (av*1.5)):
             va='PVC'
         elif (pvsra_volume[8] > (av*2 )):
