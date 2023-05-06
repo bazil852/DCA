@@ -116,25 +116,26 @@ def lambda_function(client,strategy_id):
     try:
         multiplier= float(multiplier)
     except Exception as e:
-        print(e)
+
+        print("multiplier ",e)
         multiplier=1
     try:
         buyOn= float(buyOn)
     except Exception as e:
-        print(e)
+        print("Buy on  ",e)
         buyOn=1
     if (buyOn<=0):
         buyOn=1
     try:
         ignore= float(ignore)
     except Exception as e:
-        print(e)
+        print("Ignore ",e)
         ignore=0
     try:
         if (safety_order<=0):
             safety_order=order_size
     except Exception as e:
-        print(e)
+        print("SO ",e)
         safety_order=order_size
     
     try:
@@ -142,12 +143,12 @@ def lambda_function(client,strategy_id):
         if (max_buy_orders<=0):
             max_buy_orders=100000
     except Exception as e:
-        print(e)
+        print("MAX BO ",e)
         max_buy_orders=100000000
     try:
         order_size=float(order_size)
     except Exception as e:
-        print(e)
+        print("Order Size ",e)
         order_size = 0
 
 
@@ -506,4 +507,4 @@ def lambda_function(client,strategy_id):
 # 644f90f5b40d77067c660398
 # client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '6454267fbb456701757d9089')
+# lambda_function( client, '6452ce83c3dadf9455341359')
