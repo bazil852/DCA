@@ -504,6 +504,6 @@ def lambda_function(client,strategy_id):
             result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 # 644f90f5b40d77067c660398
-client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-lambda_function( client, '6454267fbb456701757d9089')
+# lambda_function( client, '6454267fbb456701757d9089')
