@@ -250,6 +250,7 @@ def lambda_function(client,strategy_id):
     print (APISECRET)
     quotaguard_url = os.environ.get("QUOTAGUARDSTATIC_URL")
     proxy_parsed = urlparse(quotaguard_url)
+    exchange = ccxt.binance()
     if (ex_type == "Binance Futures Test"):
         exchange = ccxt.binance({
             'apiKey': APIKEY,
