@@ -350,10 +350,11 @@ def lambda_function(client,strategy_id):
             print (e)
         try:
             psvra_candles=fetch_with_retry(exchange, symbol, timeframe_vector,10)
+            ohlcv = psvra_candles[-2]
         except Exception as e:
             print("Error")
             print (e)
-        ohlcv = psvra_candles[-2]
+        
         timestamp, open_prices, high, low, close, volume = ohlcv
 
 
