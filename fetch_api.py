@@ -260,11 +260,7 @@ def lambda_function(client,strategy_id):
                 'defaultType': 'future',
             },
             'timeout': 15000,  # Set the timeout value in milliseconds
-            'proxies': {
-        'http': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
-        'https': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
-    },
-    'aiohttp_proxy': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+            
         })
         exchange.set_sandbox_mode(True)
     elif (ex_type == "Binance Futures"):
@@ -276,11 +272,7 @@ def lambda_function(client,strategy_id):
                 'defaultType': 'future',
             },
             'timeout': 15000,  # Set the timeout value in milliseconds
-            'proxies': {
-        'http': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
-        'https': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
-    },
-    'aiohttp_proxy': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+            
 
         })
     elif (ex_type == "Binance Spot"):
@@ -290,11 +282,7 @@ def lambda_function(client,strategy_id):
             'secret': APISECRET,
             'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
             'timeout': 15000,  # Set the timeout value in milliseconds
-            'proxies': {
-            'http': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
-            'https': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
-        },
-        'aiohttp_proxy': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+            
 
         })
         print ("HABIBI",fetch_with_retry(exchange, symbol, timeframe_vector,10))
@@ -568,6 +556,6 @@ def lambda_function(client,strategy_id):
             result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 # 644f90f5b40d77067c660398
-client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-lambda_function( client, '645aec8703093661539e9c2b')
+# lambda_function( client, '645aec8703093661539e9c2b')
