@@ -261,10 +261,10 @@ def lambda_function(client,strategy_id):
             },
             'timeout': 15000,  # Set the timeout value in milliseconds
             'proxies': {
-        'http': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
-        'https': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+        'http': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+        'https': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
     },
-    'aiohttp_proxy': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+    'aiohttp_proxy': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
         })
         exchange.set_sandbox_mode(True)
     elif (ex_type == "Binance Futures"):
@@ -277,25 +277,27 @@ def lambda_function(client,strategy_id):
             },
             'timeout': 15000,  # Set the timeout value in milliseconds
             'proxies': {
-        'http': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
-        'https': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+        'http': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+        'https': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
     },
-    'aiohttp_proxy': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+    'aiohttp_proxy': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
 
         })
     elif (ex_type == "Binance Spot"):
+        print ("YALLAAHHH")
         exchange = ccxt.binance({
             'apiKey': APIKEY,
             'secret': APISECRET,
             'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
             'timeout': 15000,  # Set the timeout value in milliseconds
             'proxies': {
-        'http': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
-        'https': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
-    },
-    'aiohttp_proxy': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+            'http': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+            'https': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
+        },
+        'aiohttp_proxy': f'http://fgrlsybvd2livn:salbbnrdku4xa7c9hr4hce4wpz@us-east-static-09.quotaguard.com:9293',
 
         })
+        print ("HABIBI",fetch_with_retry(exchange, symbol, timeframe_vector,10))
     
     print ( "Validating Data")
     print (order_size, type(order_size))
@@ -332,6 +334,9 @@ def lambda_function(client,strategy_id):
     first_order_candle_body_price = None
     first_order_candle_wick_price = None
     order_counter= 0
+
+    timestamp, open_prices, high, low, close, volume=0,0,0,0,0,0
+    psvra_candles=[]
     while True:
         logs = ''
         try:
@@ -352,11 +357,12 @@ def lambda_function(client,strategy_id):
         try:
             psvra_candles=fetch_with_retry(exchange, symbol, timeframe_vector,10)
             ohlcv = psvra_candles[-2]
+            timestamp, open_prices, high, low, close, volume = ohlcv
         except Exception as e:
             print("Error")
             print (e)
         
-        timestamp, open_prices, high, low, close, volume = ohlcv
+        
 
 
         # Calculate the 50-period SMA
@@ -562,6 +568,6 @@ def lambda_function(client,strategy_id):
             result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 # 644f90f5b40d77067c660398
-# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '645aec8703093661539e9c2b')
+lambda_function( client, '645aec8703093661539e9c2b')
