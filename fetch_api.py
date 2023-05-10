@@ -5,6 +5,8 @@ import time
 import datetime
 from bson.objectid import ObjectId
 import re
+import os 
+from urllib.parse import urlparse
 
 
 
@@ -90,7 +92,15 @@ def price_check(orders,price):
     return False
 
 
+def find_exchange_by_id(user_data, exchange_id):
+    # user_data = db.users.find_one({"_id": user_id})
 
+    exchanges=user_data['exchanges']
+    
+    for exchange in exchanges:
+        if exchange['_id'] == ObjectId(exchange_id):
+            return exchange
+    return None
 
 
 
@@ -229,25 +239,69 @@ def lambda_function(client,strategy_id):
     users=collection['users']
     userObj=users.find_one(ObjectId(do['userId']))
     print ()
-    APIKEY=userObj['exchanges'][0]['apiKey']
-    APISECRET=userObj['exchanges'][0]['apiSecret']
-    exchange = ccxt.binance({
-        'apiKey': APIKEY,
-        'secret': APISECRET,
-        'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
-        'options': {
-            'defaultType': 'future',
-        },
-        'timeout': 15000,  # Set the timeout value in milliseconds
-    })
-    exchange.set_sandbox_mode(True)
+    db_exchange = do['exchange']
+    exchange_to = find_exchange_by_id(userObj, db_exchange)
+    print ("Exchangee ",exchange_to)
+    ex_type = exchange_to['exchangeName']
+    APIKEY= exchange_to['apiKey']
+    APISECRET= exchange_to['apiSecret']
+    print (ex_type)
+    print (APIKEY)
+    print (APISECRET)
+    quotaguard_url = os.environ.get("QUOTAGUARDSTATIC_URL")
+    proxy_parsed = urlparse(quotaguard_url)
+    if (ex_type == "Binance Futures Test"):
+        exchange = ccxt.binance({
+            'apiKey': APIKEY,
+            'secret': APISECRET,
+            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+            'options': {
+                'defaultType': 'future',
+            },
+            'timeout': 15000,  # Set the timeout value in milliseconds
+            'proxies': {
+        'http': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+        'https': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+    },
+    'aiohttp_proxy': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+        })
+        exchange.set_sandbox_mode(True)
+    elif (ex_type == "Binance Futures"):
+        exchange = ccxt.binance({
+            'apiKey': APIKEY,
+            'secret': APISECRET,
+            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+            'options': {
+                'defaultType': 'future',
+            },
+            'timeout': 15000,  # Set the timeout value in milliseconds
+            'proxies': {
+        'http': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+        'https': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+    },
+    'aiohttp_proxy': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+
+        })
+    elif (ex_type == "Binance Spot"):
+        exchange = ccxt.binance({
+            'apiKey': APIKEY,
+            'secret': APISECRET,
+            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+            'timeout': 15000,  # Set the timeout value in milliseconds
+            'proxies': {
+        'http': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+        'https': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+    },
+    'aiohttp_proxy': f'http://{proxy_parsed.hostname}:{proxy_parsed.port}',
+
+        })
     
     print ( "Validating Data")
     print (order_size, type(order_size))
     print (safety_order, type(safety_order))
     print (multiplier, type(multiplier))
     print (max_buy_orders, type(max_buy_orders))
-    print (timeframe, type(timeframe))
+    # print (timeframe, type(timeframe))
     print (orderType, type(orderType))
     print (stratType)
     print (red_action, type(red_action))
@@ -429,6 +483,7 @@ def lambda_function(client,strategy_id):
                                     order_counter += 1
                                     if action == 'buy':
                                         buy_orders.append(order)
+                                        print (order)
                                     elif action == 'sell':
                                         sell_orders.append(order)
                                     logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
@@ -507,4 +562,4 @@ def lambda_function(client,strategy_id):
 # 644f90f5b40d77067c660398
 # client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '6452ce83c3dadf9455341359')
+# lambda_function( client, '645aec8703093661539e9c2b')
