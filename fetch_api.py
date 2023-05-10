@@ -250,9 +250,7 @@ def lambda_function(client,strategy_id):
     print (APISECRET)
     quotaguard_url = os.environ.get("QUOTAGUARDSTATIC_URL")
     proxy_parsed = urlparse(quotaguard_url)
-    exchange = ccxt.binance()
-    if (ex_type == "Binance Futures Test"):
-        exchange = ccxt.binance({
+    exchange = ccxt.binance({
             'apiKey': APIKEY,
             'secret': APISECRET,
             'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
@@ -262,30 +260,43 @@ def lambda_function(client,strategy_id):
             'timeout': 15000,  # Set the timeout value in milliseconds
             
         })
-        exchange.set_sandbox_mode(True)
-    elif (ex_type == "Binance Futures"):
-        exchange = ccxt.binance({
-            'apiKey': APIKEY,
-            'secret': APISECRET,
-            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
-            'options': {
-                'defaultType': 'future',
-            },
-            'timeout': 15000,  # Set the timeout value in milliseconds
+    exchange.set_sandbox_mode(True)
+
+    # if (ex_type == "Binance Futures Test"):
+    #     exchange = ccxt.binance({
+    #         'apiKey': APIKEY,
+    #         'secret': APISECRET,
+    #         'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+    #         'options': {
+    #             'defaultType': 'future',
+    #         },
+    #         'timeout': 15000,  # Set the timeout value in milliseconds
+            
+    #     })
+    #     exchange.set_sandbox_mode(True)
+    # elif (ex_type == "Binance Futures"):
+    #     exchange = ccxt.binance({
+    #         'apiKey': APIKEY,
+    #         'secret': APISECRET,
+    #         'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+    #         'options': {
+    #             'defaultType': 'future',
+    #         },
+    #         'timeout': 15000,  # Set the timeout value in milliseconds
             
 
-        })
-    elif (ex_type == "Binance Spot"):
-        print ("YALLAAHHH")
-        exchange = ccxt.binance({
-            'apiKey': APIKEY,
-            'secret': APISECRET,
-            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
-            'timeout': 15000,  # Set the timeout value in milliseconds
+    #     })
+    # elif (ex_type == "Binance Spot"):
+    #     print ("YALLAAHHH")
+    #     exchange = ccxt.binance({
+    #         'apiKey': APIKEY,
+    #         'secret': APISECRET,
+    #         'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+    #         'timeout': 15000,  # Set the timeout value in milliseconds
             
 
-        })
-        print ("HABIBI",fetch_with_retry(exchange, symbol, timeframe_vector,10))
+    #     })
+    #     print ("HABIBI",fetch_with_retry(exchange, symbol, timeframe_vector,10))
     
     print ( "Validating Data")
     print (order_size, type(order_size))
@@ -558,4 +569,4 @@ def lambda_function(client,strategy_id):
 # 644f90f5b40d77067c660398
 # client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '645aec8703093661539e9c2b')
+# lambda_function( client, '645b482503093661539e9c4e')
