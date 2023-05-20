@@ -10,13 +10,11 @@ from celery_worker import run_backtest
 app = FastAPI()
 
 
-origins = [
-    "https://funny-hamster-41a977.netlify.app",  # Replace this with your React app's origin
-]
+
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
     allow_origin_regex='https?://.*',  # Allow any domain, but restrict to HTTP and HTTPS
     allow_credentials=True,
     allow_methods=["*"],
