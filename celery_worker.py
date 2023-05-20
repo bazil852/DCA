@@ -15,3 +15,10 @@ def run_bot_instance( strategy_id):
     # set up connection to MongoDB Cloud
     client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
     fetch_api.lambda_function( client, strategy_id)
+
+@app.task
+def run_backtest( strategy_id):
+    import fetch_api
+    # set up connection to MongoDB Cloud
+    client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+    fetch_api.backtesting( client, strategy_id)

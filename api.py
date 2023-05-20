@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 # import pymongo
+import fetch_api
+import pymongo
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from celery_worker import run_bot_instance  # Import the Celery task
+from celery_worker import run_backtest
 
 app = FastAPI()
 
@@ -41,6 +44,16 @@ async def start_bot(payload: StrategyIdPayload):
     run_bot_instance.delay(  strategy_id)
 
     return {"status": "success", "message": "Bot started"}
+
+@app.post("/backtest")
+def run_backtest(payload: StrategyIdPayload):
+    strategy_id = payload.strategyId
+    # set up connection to MongoDB Cloud
+    client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+
+    result = fetch_api.backtesting(client, strategy_id)
+    
+    return result
 
 @app.post("/stop")
 async def stop_bot():
