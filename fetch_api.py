@@ -2,11 +2,13 @@
 import pymongo
 import ccxt
 import time
-import datetime
+from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 import re
+import json
 import os 
 from urllib.parse import urlparse
+from binance.client import Client
 
 
 
@@ -19,7 +21,16 @@ def calculate_sma(prices, period):
         return None
     return sum(prices[-period:]) / period
 
-
+def timeframe_to_milliseconds(timeframe):
+    multiplier = int(timeframe[:-1])  # number part of timeframe
+    if timeframe.endswith('m'):
+        return multiplier * 60 * 1000
+    elif timeframe.endswith('h'):
+        return multiplier * 60 * 60 * 1000
+    elif timeframe.endswith('d'):
+        return multiplier * 24 * 60 * 60 * 1000
+    else:
+        raise ValueError("Invalid timeframe")
 
 def fetch_with_retry(exchange, symbol, timeframe,numb, retries=3, delay=5):
     for attempt in range(retries):
@@ -30,7 +41,62 @@ def fetch_with_retry(exchange, symbol, timeframe,numb, retries=3, delay=5):
                 time.sleep(delay)
             else:
                 raise e
+def fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000):
+        # Calculate the start and end timestamps for the previous 3 months
+    client = Client()
+    timeframe_mapping = {
+    '1m': Client.KLINE_INTERVAL_1MINUTE,
+    '3m': Client.KLINE_INTERVAL_3MINUTE,
+    '5m': Client.KLINE_INTERVAL_5MINUTE,
+    '15m': Client.KLINE_INTERVAL_15MINUTE,
+    '30m': Client.KLINE_INTERVAL_30MINUTE,
+    '1h': Client.KLINE_INTERVAL_1HOUR,
+    '2h': Client.KLINE_INTERVAL_2HOUR,
+    '4h': Client.KLINE_INTERVAL_4HOUR,
+    '6h': Client.KLINE_INTERVAL_6HOUR,
+    '8h': Client.KLINE_INTERVAL_8HOUR,
+    '12h': Client.KLINE_INTERVAL_12HOUR,
+    '1d': Client.KLINE_INTERVAL_1DAY,
+    '3d': Client.KLINE_INTERVAL_3DAY
+    # '1w': Client.KLINE_INTERVAL_1WEEK,
+    # '1M': Client.KLINE_INTERVAL_1MONTH
+}
+    symbol = symbol.replace('/','')
+ 
+    # Get the corresponding Binance API constant for the timeframe
+    interval = timeframe_mapping.get(timeframe)
 
+    # Calculate the start and end timestamps for the previous 3 months
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(days=210)
+    
+
+    # Convert timestamps to string format required by get_historical_klines
+    start_time_str = start_time.strftime('%d %b, %Y')
+    end_time_str = end_time.strftime('%d %b, %Y')
+
+    # Fetch candles using Binance API
+    candles = client.get_historical_klines(symbol, interval, start_time_str, end_time_str)
+
+    # Extract relevant data from candles and create a list
+    ohlcv_list = []
+    unique_timestamps = set()
+    for candle in candles:
+        timestamp = candle[0]  # Get the timestamp value from the candle
+        if timestamp not in unique_timestamps:
+            unique_timestamps.add(timestamp)
+            open_price = float(candle[1])
+            high_price = float(candle[2])
+            low_price = float(candle[3])
+            close_price = float(candle[4])
+            volume = float(candle[5])
+
+            ohlcv_list.append([timestamp, open_price, high_price, low_price, close_price, volume])
+    
+
+    ohlcv_list = sorted(ohlcv_list, key=lambda x: x[0])
+
+    return ohlcv_list
 
 def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high,open_prices, low, pvsra_close, close):
     sum_1 = 0
@@ -383,7 +449,7 @@ def lambda_function(client,strategy_id):
                 pvsra_volume=volume
                 # Call the pvsra_indicator function to determine the type of candle
                 candle_type,av = pvsra_indicator(overridesym, pvsra_volume_array, volume_array, pvsra_high_array, pvsra_low_array, high_array, open_price, low_array, close_prices_array, close_prices_array)
-                utc_time = datetime.datetime.utcfromtimestamp(timestamp / 1000.0)
+                utc_time = datetime.utcfromtimestamp(timestamp / 1000.0)
                 # print ("============================")
                 # print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_prices,"  High:",high,"  Low:",low,"  Close:",close,"  \nCandle Type: ",candle_type,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume)
                 logs += "============================\n"
@@ -569,8 +635,9 @@ def lambda_function(client,strategy_id):
 def backtesting(client,strategy_id):
     collection = client['test']
     strats=collection['strategies']
+    print (strategy_id)
     strategyID=strategy_id
-    do = strats.find_one(ObjectId(strategyID))
+    do = strategy_id
     order_size = do['orderSize']
     safety_order = do['safetyOrderSize']
     max_buy_orders = int(do['maxOrders'])
@@ -738,7 +805,7 @@ def backtesting(client,strategy_id):
 
 
     
-    current_order_size = order_size
+    current_order_size = float(order_size)
     last_candle_timestamp = None
     first_order_candle_body_price = None
     first_order_candle_wick_price = None
@@ -747,17 +814,20 @@ def backtesting(client,strategy_id):
     timestamp, open_prices, high, low, close, volume=0,0,0,0,0,0
     psvra_candles=[]
     profits = 0
-    ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=1000)
+    ohlcv = fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000)
+    print (len(ohlcv))
+    # return
     ohlcv_for_MA=[]
-    for i in range (0,len(timeframe_MA)):
+    for i in range(0, len(timeframe_MA)):
         if (timeframe_vector == timeframe_MA[i]):
-            
             ohlcv_for_MA.append(ohlcv)
         else:
-            ohlcv_for_MA.append(exchange.fetch_ohlcv(symbol, timeframe_MA[i], limit=1000))
-            ohlcv_for_MA[i].pop(999)
-    ohlcv.pop(999)
+            ohlcv_for_MA.append(fetch_ohlcv_my(exchange, symbol, timeframe_MA[i], limit=5000))
+            # ohlcv_for_MA[i] = ohlcv_for_MA[i][:-1]  
+    # ohlcv = ohlcv[:-1]
+    iterator_loop=0
     for i in range(50, len(ohlcv)):
+        print(iterator_loop, "Candle")
         current_candle = ohlcv[i]
         psvra_candles=ohlcv[i-10:i]
         timestamp, open_prices, high, low, close, volume = current_candle
@@ -779,11 +849,11 @@ def backtesting(client,strategy_id):
             pvsra_volume=volume
             # Call the pvsra_indicator function to determine the type of candle
             candle_type,av = pvsra_indicator(overridesym, pvsra_volume_array, volume_array, pvsra_high_array, pvsra_low_array, high_array, open_price, low_array, close_prices_array, close_prices_array)
-            utc_time = datetime.datetime.utcfromtimestamp(timestamp / 1000.0)
+            utc_time = timestamp 
             # print ("============================")
             # print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_prices,"  High:",high,"  Low:",low,"  Close:",close,"  \nCandle Type: ",candle_type,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume)
             print ("============================\n")
-            print("Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n")
+            print("Timestamp"+(str(utc_time))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n")
             # Check if the candle type matches any of the conditions
             action = None
             if candle_type == 'RVC' and red_action != 'none':
@@ -840,9 +910,11 @@ def backtesting(client,strategy_id):
                                     "timestamp": timestamp
                                 }
                                 if len(buy_orders) == 1:
-                                    current_order_size = safety_order
+                                    current_order_size = float(safety_order)
                                 elif len(buy_orders) >1:
-                                    current_order_size *= multiplier
+                                    print(type(current_order_size))
+                                    print(type(multiplier))
+                                    current_order_size *= float(multiplier)
             
                                 order_counter += 1
                                 if action == 'buy':
@@ -852,6 +924,7 @@ def backtesting(client,strategy_id):
                                 elif action == 'sell':
                                     sell_orders.append(order)
                                     total_sell_orders.append(order)
+                                    
                                 print(str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n')
                                 print("Order Filled for " + str(order['price']) + "\n")
                                 
@@ -866,9 +939,11 @@ def backtesting(client,strategy_id):
                                     "timestamp": timestamp
                                 }
                             if len(buy_orders) == 1:
-                                current_order_size = safety_order
+                                current_order_size = float(safety_order)
                             elif len(buy_orders) >1:
-                                current_order_size *= multiplier
+                                print(type(current_order_size))
+                                print(type(multiplier))
+                                current_order_size *= float(multiplier)
 
                             order_counter += 1
                             if action == 'buy':
@@ -935,20 +1010,24 @@ def backtesting(client,strategy_id):
                             "timestamp": timestamp
                         }
                 sell_orders.append(sell_order)
+                total_sell_orders.append(order)
+                order_counter=0
                 print(f"Taking profit: {sell_order}")
                 print ("Taking profit: " +str(sell_order))
                 buy_orders=[]
                 profits+=profit
+        iterator_loop+=1
     print ("Total Profit: ", profits)
     print (len(total_buy_orders))
     print (len(total_sell_orders))
 
-    return json.dumps({
+    return {
         "candles": ohlcv,
         "profit" : profits,
         "buy_orders":total_buy_orders,
-        "sell_orders":total_sell_orders
-    })
+        "sell_orders":total_sell_orders,
+        "candlesMA":ohlcv_for_MA
+    }
 
 
 # 644f90f5b40d77067c660398

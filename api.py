@@ -6,6 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from celery_worker import run_bot_instance  # Import the Celery task
 from celery_worker import run_backtest
+from typing import Dict, Any
 
 app = FastAPI()
 
@@ -44,8 +45,8 @@ async def start_bot(payload: StrategyIdPayload):
     return {"status": "success", "message": "Bot started"}
 
 @app.post("/backtest")
-def run_backtest(payload: StrategyIdPayload):
-    strategy_id = payload.strategyId
+async def run_backtest(payload: Dict[Any, Any]):
+    strategy_id = payload
     # set up connection to MongoDB Cloud
     client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
