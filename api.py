@@ -16,13 +16,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex='https?://.*',  # Allow any domain, but restrict to HTTP and HTTPS
+    allow_origins=['https://funny-hamster-41a977.netlify.app'],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
 
 
 
