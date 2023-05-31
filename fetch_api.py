@@ -263,22 +263,22 @@ def lambda_function(client,strategy_id):
                     if (stratType=='Long'):
                         red_action='buy'
                     elif (stratType=='Short'):
-                        red_action='buy'
+                        red_action='sell'
                 if candle == 'purple':
                     if (stratType=='Long'):
                         purple_action='buy'
                     elif (stratType=='Short'):
-                        purple_action='buy'
+                        purple_action='sell'
                 if candle == 'blue':
                     if (stratType=='Long'):
                         blue_action='buy'
                     elif (stratType=='Short'):
-                        blue_action='buy'
+                        blue_action='sell'
                 if candle == 'green':
                     if (stratType=='Long'):
                         green_action='buy'
                     elif (stratType=='Short'):
-                        green_action='buy'
+                        green_action='sell'
         elif (indicators['chooseIndicatorValue']=='Moving Averages'):
             enableMA='True'
             timeframe_MA.append( indicators['timeFrameValue'])
@@ -316,7 +316,11 @@ def lambda_function(client,strategy_id):
     print (APISECRET)
     quotaguard_url = os.environ.get("QUOTAGUARDSTATIC_URL")
     proxy_parsed = urlparse(quotaguard_url)
-    exchange = ccxt.binance({
+    exchange = ccxt.binance()
+    # exchange.set_sandbox_mode(True)
+
+    if (ex_type == "Binance Futures Test"):
+        exchange = ccxt.binance({
             'apiKey': APIKEY,
             'secret': APISECRET,
             'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
@@ -326,42 +330,29 @@ def lambda_function(client,strategy_id):
             'timeout': 15000,  # Set the timeout value in milliseconds
             
         })
-    exchange.set_sandbox_mode(True)
-
-    # if (ex_type == "Binance Futures Test"):
-    #     exchange = ccxt.binance({
-    #         'apiKey': APIKEY,
-    #         'secret': APISECRET,
-    #         'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
-    #         'options': {
-    #             'defaultType': 'future',
-    #         },
-    #         'timeout': 15000,  # Set the timeout value in milliseconds
-            
-    #     })
-    #     exchange.set_sandbox_mode(True)
-    # elif (ex_type == "Binance Futures"):
-    #     exchange = ccxt.binance({
-    #         'apiKey': APIKEY,
-    #         'secret': APISECRET,
-    #         'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
-    #         'options': {
-    #             'defaultType': 'future',
-    #         },
-    #         'timeout': 15000,  # Set the timeout value in milliseconds
+        exchange.set_sandbox_mode(True)
+    elif (ex_type == "Binance Futures"):
+        exchange = ccxt.binance({
+            'apiKey': APIKEY,
+            'secret': APISECRET,
+            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+            'options': {
+                'defaultType': 'future',
+            },
+            'timeout': 15000,  # Set the timeout value in milliseconds
             
 
-    #     })
-    # elif (ex_type == "Binance Spot"):
-    #     print ("YALLAAHHH")
-    #     exchange = ccxt.binance({
-    #         'apiKey': APIKEY,
-    #         'secret': APISECRET,
-    #         'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
-    #         'timeout': 15000,  # Set the timeout value in milliseconds
+        })
+    elif (ex_type == "Binance Spot"):
+        print ("YALLAAHHH")
+        exchange = ccxt.binance({
+            'apiKey': APIKEY,
+            'secret': APISECRET,
+            'enableRateLimit': True,  # https://github.com/ccxt/ccxt/wiki/Manual#rate-limit
+            'timeout': 15000,  # Set the timeout value in milliseconds
             
 
-    #     })
+        })
     #     print ("HABIBI",fetch_with_retry(exchange, symbol, timeframe_vector,10))
     
     print ( "Validating Data")
@@ -522,6 +513,30 @@ def lambda_function(client,strategy_id):
 
                                     if order_placed:
                                         order_counter += 1
+                                        collection = client['test']
+                                        mongo_doc = {
+                                            "_id": order["info"]["orderId"],
+                                            "symbol": order["info"]["symbol"],
+                                            "status": order["info"]["status"],
+                                            "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
+                                            "executedQty": {"$numberDouble": order["info"]["executedQty"]},
+                                            "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
+                                            "timeInForce": order["info"]["timeInForce"],
+                                            "type": order["info"]["type"],
+                                            "side": order["info"]["side"],
+                                            "price": {"$numberInt": order["price"]},
+                                            "cost": {"$numberDouble": order["cost"]},
+                                            "average": {"$numberInt": order["average"]},
+                                            "filled": {"$numberDouble": order["filled"]},
+                                            "remaining": {"$numberInt": order["remaining"]},
+                                            "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
+                                            "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
+                                            "strategyId": {"$oid": strategy_id},  # assuming a static value for this example
+                                            "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
+                                            "__v": {"$numberInt": "0"},
+                                            "userId": {"$oid": do['userId']}, }
+                                        orders=collection['orders']
+                                        orders.insert_one(mongo_doc)
                                         if action == 'buy':
                                             buy_orders.append(order)
                                         elif action == 'sell':
@@ -554,6 +569,30 @@ def lambda_function(client,strategy_id):
 
                                 if order_placed:
                                     order_counter += 1
+                                    collection = client['test']
+                                    mongo_doc = {
+                                        "_id": order["info"]["orderId"],
+                                        "symbol": order["info"]["symbol"],
+                                        "status": order["info"]["status"],
+                                        "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
+                                        "executedQty": {"$numberDouble": order["info"]["executedQty"]},
+                                        "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
+                                        "timeInForce": order["info"]["timeInForce"],
+                                        "type": order["info"]["type"],
+                                        "side": order["info"]["side"],
+                                        "price": {"$numberInt": order["price"]},
+                                        "cost": {"$numberDouble": order["cost"]},
+                                        "average": {"$numberInt": order["average"]},
+                                        "filled": {"$numberDouble": order["filled"]},
+                                        "remaining": {"$numberInt": order["remaining"]},
+                                        "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
+                                        "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
+                                        "strategyId": {"$oid": strategy_id},  # assuming a static value for this example
+                                        "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
+                                        "__v": {"$numberInt": "0"},
+                                        "userId": {"$oid": do['userId']}, }
+                                    orders=collection['orders']
+                                    orders.insert_one(mongo_doc)
                                     if action == 'buy':
                                         buy_orders.append(order)
                                         print (order)
@@ -618,6 +657,30 @@ def lambda_function(client,strategy_id):
                         print(f"Taking profit: {sell_order}")
                         logs += "Taking profit: " +str(sell_order)
                         buy_orders.remove(order)
+                        collection = client['test']
+                        mongo_doc = {
+                            "_id": order["info"]["orderId"],
+                            "symbol": order["info"]["symbol"],
+                            "status": order["info"]["status"],
+                            "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
+                            "executedQty": {"$numberDouble": order["info"]["executedQty"]},
+                            "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
+                            "timeInForce": order["info"]["timeInForce"],
+                            "type": order["info"]["type"],
+                            "side": order["info"]["side"],
+                            "price": {"$numberInt": order["price"]},
+                            "cost": {"$numberDouble": order["cost"]},
+                            "average": {"$numberInt": order["average"]},
+                            "filled": {"$numberDouble": order["filled"]},
+                            "remaining": {"$numberInt": order["remaining"]},
+                            "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
+                            "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
+                            "strategyId": {"$oid": strategy_id},  # assuming a static value for this example
+                            "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
+                            "__v": {"$numberInt": "0"},
+                            "userId": {"$oid": do['userId']}, }
+                        orders=collection['orders']
+                        orders.insert_one(mongo_doc)
                     except Exception as e:
                         print ("Error in Taking profit: ",e)
                         # log += str(e) +'\n'
@@ -1033,4 +1096,4 @@ def backtesting(client,strategy_id):
 # 644f90f5b40d77067c660398
 # client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# backtesting( client, '645b482503093661539e9c4e')
+# lambda_function( client, '64776a84cae6ce9832bf4423')

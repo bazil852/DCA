@@ -7,6 +7,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # app = Celery("FAST", broker="pyamqp://guest@localhost//")
 
+# amqps://ouifibyf:V541bgbpT1dP6dQnOhHRy1yWJ97vdqmO@stingray.rmq.cloudamqp.com/ouifibyf
+# amqps://ouifibyf:V541bgbpT1dP6dQnOhHRy1yWJ97vdqmO@stingray.rmq.cloudamqp.com/ouifibyf
+
+
 app = Celery("FAST", broker=os.environ['CLOUDAMQP_URL'])
 
 @app.task
