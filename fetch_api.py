@@ -1098,8 +1098,13 @@ def backtesting(client,strategy_id):
                 take_profit = profit >= take_profit_percentage
             elif ProfitType == 'At candle body':
                 take_profit = current_price >= first_order_candle_body_price
+                profit = (current_price - first_order_candle_body_price) / first_order_candle_body_price
+                print ("Profit at : ", first_order_candle_body_price)
             elif ProfitType == 'At Candle wick':
                 take_profit = current_price >= first_order_candle_wick_price
+                profit = (current_price - first_order_candle_wick_price) / first_order_candle_wick_price
+                print ("Profit at : ", first_order_candle_wick_price)
+                
             else:
                 take_profit = False
             print ("PNL: ",profit)
