@@ -99,6 +99,9 @@ def fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000):
     return ohlcv_list
 
 def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high,open_prices, low, pvsra_close, close):
+    print (len(pvsra_volume))
+    print (len(volume))
+    print (len(pvsra_high))
     sum_1 = 0
     for i in pvsra_volume:
         sum_1+=i;
@@ -438,6 +441,7 @@ def lambda_function(client,strategy_id):
                 pvsra_volume_array = [volume[5] for volume in psvra_candles]
                 close_prices_array = [candle[4] for candle in psvra_candles]
                 pvsra_volume=volume
+
                 # Call the pvsra_indicator function to determine the type of candle
                 candle_type,av = pvsra_indicator(overridesym, pvsra_volume_array, volume_array, pvsra_high_array, pvsra_low_array, high_array, open_price, low_array, close_prices_array, close_prices_array)
                 utc_time = datetime.utcfromtimestamp(timestamp / 1000.0)
@@ -512,6 +516,7 @@ def lambda_function(client,strategy_id):
                                             time.sleep(1)
 
                                     if order_placed:
+                                        print (order)
                                         order_counter += 1
                                         collection = client['test']
                                         mongo_doc = {
@@ -568,6 +573,7 @@ def lambda_function(client,strategy_id):
                                         time.sleep(1)  # Optional: Add a short delay between attempts
 
                                 if order_placed:
+                                    print (order)
                                     order_counter += 1
                                     collection = client['test']
                                     mongo_doc = {
@@ -1094,6 +1100,6 @@ def backtesting(client,strategy_id):
 
 
 # 644f90f5b40d77067c660398
-# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '64776a84cae6ce9832bf4423')
+lambda_function( client, '6479e511ca7bc3072abccf64')
