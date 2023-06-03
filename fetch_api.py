@@ -172,6 +172,30 @@ def find_exchange_by_id(user_data, exchange_id):
     return None
 
 
+def map_order_to_mongo_doc(order, strategy_id, user_id):
+    mongo_doc = {
+        "_id": order["info"]["orderId"],
+        "symbol": order["info"]["symbol"],
+        "status": order["info"]["status"],
+        "avgPrice": {"$numberDouble": order["average"]},
+        "executedQty": {"$numberDouble": order["info"]["executedQty"]},
+        "cumQuote": {"$numberDouble": order["info"]["cummulativeQuoteQty"]},
+        "timeInForce": order["info"]["timeInForce"],
+        "type": order["info"]["type"],
+        "side": order["info"]["side"],
+        "price": {"$numberDouble": order["price"]},
+        "cost": {"$numberDouble": order["cost"]},
+        "average": {"$numberDouble": order["average"]},
+        "filled": {"$numberDouble": order["filled"]},
+        "remaining": {"$numberDouble": order["remaining"]},
+        "totalProfit": {"$numberDouble": 0.0},
+        "runDateTime": {"$date": {"$numberLong": order["info"]["transactTime"]}},
+        "strategyId": {"$oid": strategy_id},
+        "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
+        "__v": {"$numberInt": "0"},
+        "userId": {"$oid": user_id},
+    }
+    return mongo_doc
 
 def lambda_function(client,strategy_id):
     collection = client['test']
@@ -519,7 +543,10 @@ def lambda_function(client,strategy_id):
                                         print (order)
                                         order_counter += 1
                                         collection = client['test']
-                                        mongo_doc = {
+                                        if (ex_type == "Binance Spot"):
+                                            mongo_doc = map_order_to_mongo_doc(order, strategy_id, do['userId'])
+                                        else:
+                                            mongo_doc = {
                                             "_id": order["info"]["orderId"],
                                             "symbol": order["info"]["symbol"],
                                             "status": order["info"]["status"],
@@ -540,6 +567,7 @@ def lambda_function(client,strategy_id):
                                             "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
                                             "__v": {"$numberInt": "0"},
                                             "userId": {"$oid": do['userId']}, }
+                                        
                                         orders=collection['orders']
                                         orders.insert_one(mongo_doc)
                                         if action == 'buy':
@@ -576,7 +604,10 @@ def lambda_function(client,strategy_id):
                                     print (order)
                                     order_counter += 1
                                     collection = client['test']
-                                    mongo_doc = {
+                                    if (ex_type == "Binance Spot"):
+                                            mongo_doc = map_order_to_mongo_doc(order, strategy_id, do['userId'])
+                                    else:
+                                        mongo_doc = {
                                         "_id": order["info"]["orderId"],
                                         "symbol": order["info"]["symbol"],
                                         "status": order["info"]["status"],
@@ -597,6 +628,7 @@ def lambda_function(client,strategy_id):
                                         "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
                                         "__v": {"$numberInt": "0"},
                                         "userId": {"$oid": do['userId']}, }
+                                    
                                     orders=collection['orders']
                                     orders.insert_one(mongo_doc)
                                     if action == 'buy':
@@ -664,7 +696,10 @@ def lambda_function(client,strategy_id):
                         logs += "Taking profit: " +str(sell_order)
                         buy_orders.remove(order)
                         collection = client['test']
-                        mongo_doc = {
+                        if (ex_type == "Binance Spot"):
+                                            mongo_doc = map_order_to_mongo_doc(order, strategy_id, do['userId'])
+                        else:
+                            mongo_doc = {
                             "_id": order["info"]["orderId"],
                             "symbol": order["info"]["symbol"],
                             "status": order["info"]["status"],
@@ -685,6 +720,7 @@ def lambda_function(client,strategy_id):
                             "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
                             "__v": {"$numberInt": "0"},
                             "userId": {"$oid": do['userId']}, }
+                                        
                         orders=collection['orders']
                         orders.insert_one(mongo_doc)
                     except Exception as e:
@@ -1100,6 +1136,6 @@ def backtesting(client,strategy_id):
 
 
 # 644f90f5b40d77067c660398
-client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-lambda_function( client, '6479e511ca7bc3072abccf64')
+# lambda_function( client, '647b1341b5fc7d7b9aa74348')
