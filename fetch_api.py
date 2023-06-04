@@ -706,16 +706,16 @@ def lambda_function(client,strategy_id):
                 # Rest of your sell order code...
             except Exception as e:
                 print ("Error in Taking profit: ", e)
-            if (len(logs)>2):
-                print (logs)
-                collection = client['test']
-                strats=collection['strategies']
-                strategyID=strategy_id
-                do = strats.find_one(ObjectId(strategyID))
-                logs=logs.replace('\n','<br />')
-                logs = remove_extra_br(logs)
-                update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
-                result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
+        if (len(logs)>2):
+            print (logs)
+            collection = client['test']
+            strats=collection['strategies']
+            strategyID=strategy_id
+            do = strats.find_one(ObjectId(strategyID))
+            logs=logs.replace('\n','<br />')
+            logs = remove_extra_br(logs)
+            update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
+            result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 def backtesting(client,strategy_id):
     collection = client['test']
