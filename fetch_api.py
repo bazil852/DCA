@@ -529,10 +529,6 @@ def lambda_function(client,strategy_id):
                                                 str(round((float(current_order_size) / close), 3))
                                             )
                                             order_placed = True
-                                            if len(buy_orders) == 1:
-                                                current_order_size = safety_order
-                                            elif len(buy_orders) > 1:
-                                                current_order_size *= multiplier
                                             break
                                         except Exception as e:
                                             print(f"Error placing order (attempt {_ + 1}): {e}")
@@ -574,6 +570,10 @@ def lambda_function(client,strategy_id):
                                             buy_orders.append(order)
                                         elif action == 'sell':
                                             sell_orders.append(order)
+                                        if len(buy_orders) == 1:
+                                            current_order_size = safety_order
+                                        elif len(buy_orders) > 1:
+                                            current_order_size *= multiplier
                                         logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
                                         logs += "Order Filled for " + str(order['price']) + "\n"
                                     else:
@@ -590,10 +590,6 @@ def lambda_function(client,strategy_id):
                                             str(round((float(current_order_size) / close), 3))
                                         )
                                         order_placed = True
-                                        if len(buy_orders) == 1:
-                                            current_order_size = safety_order
-                                        elif len(buy_orders) >1:
-                                            current_order_size *= multiplier
                                         break
                                     except Exception as e:
                                         print(f"Error placing order (attempt {_ + 1}): {e}")
@@ -636,6 +632,10 @@ def lambda_function(client,strategy_id):
                                         print (order)
                                     elif action == 'sell':
                                         sell_orders.append(order)
+                                    if len(buy_orders) == 1:
+                                            current_order_size = safety_order
+                                    elif len(buy_orders) >1:
+                                        current_order_size *= multiplier
                                     logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
                                     logs += "Order Filled for " + str(order['price'])+"\n"
                                 else:
