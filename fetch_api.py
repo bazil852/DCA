@@ -649,18 +649,20 @@ def lambda_function(client,strategy_id):
 
 
 
-        # Monitor orders and check for 3% profit
+    # Monitor orders and check for 3% profit
         total_price = 0
         total_filled = 0
         total_tickers_bought = 0
+        profit_condition_met = False  # Initialize flag variable
+
         for order in buy_orders:
             order_id = order['id']
             try:
                 order_data = exchange.fetch_order(order_id, symbol)
             except Exception as e:
                 print (e)
-                # logs += str (e)+'\n'
                 continue
+
             if order_data['status'] == 'closed':
                 total_price += order_data['average'] * order_data['filled']
                 total_filled += order_data['filled']
@@ -669,13 +671,13 @@ def lambda_function(client,strategy_id):
                     current_price = exchange.fetch_ticker(symbol)['last']
                 except Exception as e:
                     print (e)
-                    # logs += str (e)+'\n'
                     continue
                 
                 if total_filled > 0:
                     avg_price = total_price / total_filled
                 else:
                     avg_price = 0
+
                 if ProfitType == 'Fixed':
                     profit = (current_price - avg_price) / avg_price
                     take_profit = profit >= take_profit_percentage
@@ -689,55 +691,31 @@ def lambda_function(client,strategy_id):
                     take_profit = False
 
                 if take_profit:
-                    # Take profit
-                    tickerAmount = total_tickers_bought
-                    try:
-                        sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
-                        sell_orders.append(sell_order)
-                        print(f"Taking profit: {sell_order}")
-                        logs += "Taking profit: " +str(sell_order)
-                        buy_orders.remove(order)
-                        collection = client['test']
-                        if (ex_type == "Binance Spot"):
-                                            mongo_doc = map_order_to_mongo_doc(order, strategy_id, do['userId'])
-                        else:
-                            mongo_doc = {
-                            "_id": order["info"]["orderId"],
-                            "symbol": order["info"]["symbol"],
-                            "status": order["info"]["status"],
-                            "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
-                            "executedQty": {"$numberDouble": order["info"]["executedQty"]},
-                            "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
-                            "timeInForce": order["info"]["timeInForce"],
-                            "type": order["info"]["type"],
-                            "side": order["info"]["side"],
-                            "price": {"$numberInt": order["price"]},
-                            "cost": {"$numberDouble": order["cost"]},
-                            "average": {"$numberInt": order["average"]},
-                            "filled": {"$numberDouble": order["filled"]},
-                            "remaining": {"$numberInt": order["remaining"]},
-                            "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
-                            "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
-                            "strategyId": {"$oid": strategy_id},  # assuming a static value for this example
-                            "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
-                            "__v": {"$numberInt": "0"},
-                            "userId": {"$oid": do['userId']}, }
-                                        
-                        orders=collection['orders']
-                        orders.insert_one(mongo_doc)
-                    except Exception as e:
-                        print ("Error in Taking profit: ",e)
-                        # log += str(e) +'\n'
-        if (len(logs)>2):
-            print (logs)
-            collection = client['test']
-            strats=collection['strategies']
-            strategyID=strategy_id
-            do = strats.find_one(ObjectId(strategyID))
-            logs=logs.replace('\n','<br />')
-            logs = remove_extra_br(logs)
-            update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
-            result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
+                    profit_condition_met = True  # Set flag to True if profit condition is met for any order
+                    buy_orders.remove(order)
+
+        # After loop, check if profit condition was met for any order
+        if profit_condition_met:
+            # Take profit
+            tickerAmount = total_tickers_bought
+            try:
+                sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
+                sell_orders.append(sell_order)
+                print(f"Taking profit: {sell_order}")
+                logs += "Taking profit: " + str(sell_order)
+                # Rest of your sell order code...
+            except Exception as e:
+                print ("Error in Taking profit: ", e)
+            if (len(logs)>2):
+                print (logs)
+                collection = client['test']
+                strats=collection['strategies']
+                strategyID=strategy_id
+                do = strats.find_one(ObjectId(strategyID))
+                logs=logs.replace('\n','<br />')
+                logs = remove_extra_br(logs)
+                update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
+                result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
                 
 def backtesting(client,strategy_id):
     collection = client['test']
