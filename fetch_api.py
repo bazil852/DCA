@@ -202,6 +202,7 @@ def lambda_function(client,strategy_id):
     strats=collection['strategies']
     strategyID=strategy_id
     do = strats.find_one(ObjectId(strategyID))
+    print (do)
     order_size = do['orderSize']
     safety_order = do['safetyOrderSize']
     max_buy_orders = int(do['maxOrders'])
@@ -494,12 +495,15 @@ def lambda_function(client,strategy_id):
                     elif conditions_hit % int(buyOn) == 0 and price_check(buy_orders, close)==False and order_counter<max_buy_orders:
                     # Place the order using ccxt
                         if action == 'buy' or action == 'sell':
-                            if len(buy_orders) == 0:
+                            if len(buy_orders) == 0 and (candle_type =='RVC' or candle_type =='PVC'):
                                 first_order_candle_body_price = open_prices
                                 first_order_candle_wick_price = high
+                            elif len(buy_orders) == 0 and (candle_type =='GVC' or candle_type =='BVC'):
+                                first_order_candle_body_price = close
+                                first_order_candle_wick_price = low
                             # Place a custom order
                             order_placed = False
-                            retries = 5
+                            retries = 1
                             if enableMA == 'True':
                                 all_conditions_met = True
                                 sma_values = []
@@ -649,63 +653,67 @@ def lambda_function(client,strategy_id):
 
 
 
-    # Monitor orders and check for 3% profit
-        total_price = 0
-        total_filled = 0
-        total_tickers_bought = 0
-        profit_condition_met = False  # Initialize flag variable
-
-        for order in buy_orders:
-            order_id = order['id']
-            try:
-                order_data = exchange.fetch_order(order_id, symbol)
-            except Exception as e:
-                print (e)
-                continue
-
-            if order_data['status'] == 'closed':
-                total_price += order_data['average'] * order_data['filled']
-                total_filled += order_data['filled']
-                total_tickers_bought += order_data['filled']
+   
+        if (len (buy_orders)> 0):
+            total_price = 0
+            total_filled = 0
+            total_tickers_bought = 0
+            profit_condition_met = False
+            # print ("Checking profit")
+            for order in buy_orders:
+                order_id = order['id']
                 try:
-                    current_price = exchange.fetch_ticker(symbol)['last']
+                    order_data = exchange.fetch_order(order_id, symbol)
                 except Exception as e:
-                    print (e)
+                    print(e)
                     continue
-                
-                if total_filled > 0:
-                    avg_price = total_price / total_filled
-                else:
-                    avg_price = 0
 
-                if ProfitType == 'Fixed':
-                    profit = (current_price - avg_price) / avg_price
-                    take_profit = profit >= take_profit_percentage
-                elif ProfitType == 'At Candle body':
-                    profit = (current_price - first_order_candle_body_price) / first_order_candle_body_price
-                    take_profit = current_price >= first_order_candle_body_price
-                elif ProfitType == 'At Candle wick':
-                    take_profit = current_price >= first_order_candle_wick_price
-                    profit = (current_price - first_order_candle_wick_price) / first_order_candle_wick_price
-                else:
-                    take_profit = False
+                if order_data['status'] == 'closed':
+                    total_price += order_data['average'] * order_data['filled']
+                    total_filled += order_data['filled']
+                    total_tickers_bought += order_data['filled']
 
-                if take_profit:
-                    profit_condition_met = True  # Set flag to True if profit condition is met for any order
-                    buy_orders.remove(order)
-
-        # After loop, check if profit condition was met for any order
-        if profit_condition_met:
-            # Take profit
-            tickerAmount = total_tickers_bought
+            if total_filled > 0:
+                avg_price = total_price / total_filled
+            else:
+                avg_price = 0
+            # print ("Total filled: ", total_filled)
+            # print ("Average price: ", avg_price)
             try:
-                sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
-                sell_orders.append(sell_order)
-                print(f"Taking profit: {sell_order}")
-                logs += "Taking profit: " + str(sell_order)
-                # Rest of your sell order code...
+                current_price = exchange.fetch_ticker(symbol)['last']
             except Exception as e:
-                print ("Error in Taking profit: ", e)
+                print(e)
+
+            take_profit = False
+            if ProfitType == 'Fixed' and avg_price>0:
+                profit = (current_price - avg_price) / avg_price
+                take_profit = profit >= take_profit_percentage
+            elif ProfitType == 'At candle body':
+                # print ("Profit check: ", current_price,first_order_candle_body_price)
+                profit = (current_price - first_order_candle_body_price) / first_order_candle_body_price
+                take_profit = current_price >= first_order_candle_body_price
+            elif ProfitType == 'At candle wick':
+                take_profit = current_price >= first_order_candle_wick_price
+                profit = (current_price - first_order_candle_wick_price) / first_order_candle_wick_price
+
+            if take_profit:
+                profit_condition_met = True  # Set flag to True if profit condition is met for any order
+
+            # After loop, check if profit condition was met for any order
+            if profit_condition_met:
+                # Take profit
+                profit_condition_met=False
+                tickerAmount = total_tickers_bought - (total_tickers_bought * 0.001)
+                print(f"Taking profit: ",tickerAmount)
+                try:
+                    sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
+                    sell_orders.append(sell_order)
+                    
+                    buy_orders=[]
+                    # logs += "Taking profit: " + str(sell_order)
+                    # Rest of your sell order code...
+                except Exception as e:
+                    print ("Error in Taking profit: ", e)
         if (len(logs)>2):
             print (logs)
             collection = client['test']
@@ -1080,7 +1088,7 @@ def backtesting(client,strategy_id):
                 take_profit = current_price >= first_order_candle_body_price
                 profit = (current_price - first_order_candle_body_price) / first_order_candle_body_price
                 print ("Profit at : ", first_order_candle_body_price)
-            elif ProfitType == 'At Candle wick':
+            elif ProfitType == 'At candle wick':
                 take_profit = current_price >= first_order_candle_wick_price
                 profit = (current_price - first_order_candle_wick_price) / first_order_candle_wick_price
                 print ("Profit at : ", first_order_candle_wick_price)
@@ -1123,4 +1131,4 @@ def backtesting(client,strategy_id):
 # 644f90f5b40d77067c660398
 # client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-# lambda_function( client, '647b1341b5fc7d7b9aa74348')
+# lambda_function( client, '647b2028b5fc7d7b9aa74359')
