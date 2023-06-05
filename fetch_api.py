@@ -633,7 +633,7 @@ def lambda_function(client,strategy_id):
                                     elif action == 'sell':
                                         sell_orders.append(order)
                                     if len(buy_orders) == 1:
-                                            current_order_size = safety_order
+                                        current_order_size = safety_order
                                     elif len(buy_orders) >1:
                                         current_order_size *= multiplier
                                     logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
