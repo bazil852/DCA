@@ -708,7 +708,7 @@ def lambda_function(client,strategy_id):
                 try:
                     sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
                     sell_orders.append(sell_order)
-                    
+                    order_counter=0
                     buy_orders=[]
                     # logs += "Taking profit: " + str(sell_order)
                     # Rest of your sell order code...
