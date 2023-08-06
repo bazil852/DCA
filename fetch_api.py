@@ -9,6 +9,7 @@ import json
 import os 
 from urllib.parse import urlparse
 from binance.client import Client
+from pyti.average_true_range import average_true_range 
 
 
 
@@ -160,6 +161,136 @@ def price_check(orders,price):
 
     return False
 
+def calculate_ema(price_data):
+    # The number of periods is the length of the price data
+    periods = len(price_data)
+
+    # Start with the first price as the initial EMA
+    ema = price_data[0]
+
+    # The weight given to the most recent price
+    multiplier = 2 / (periods + 1)
+
+    # Calculate the EMA for each price
+    for price in price_data[1:]:
+        ema = (price - ema) * multiplier + ema
+
+    return ema
+
+def calculate_ema_keltner(price_data, periods):
+    # Start with the simple average for the initial EMA
+    ema = sum(price_data[:periods]) / periods
+
+    # The weight given to the most recent price
+    multiplier = 2 / (periods + 1)
+
+    # Calculate the EMA for each price
+    for price in price_data[periods:]:
+        ema = (price - ema) * multiplier + ema
+
+    return ema
+
+def atr(high_data, low_data, close_data, periods):
+    # Ensure the data lists are the correct length
+    if len(high_data) != periods or len(low_data) != periods or len(close_data) != periods:
+        raise ValueError("Data lists must be of length 'periods'")
+    
+    tr_list = []
+    for i in range(1, periods):
+        hl = high_data[i] - low_data[i]
+        hc = abs(high_data[i] - close_data[i-1])
+        lc = abs(low_data[i] - close_data[i-1])
+        tr = max(hl, hc, lc)
+        tr_list.append(tr)
+
+    atr = sum(tr_list) / periods
+    return atr
+
+def keltner_channel_upper(price_data, periods):
+    high_data = [candle[2] for candle in price_data]
+    low_data = [candle[3] for candle in price_data]
+    close_data = [candle[4] for candle in price_data]
+
+    typical_price = [(high + low + close) / 3 for high, low, close in zip(high_data, low_data, close_data)]
+    ema = calculate_ema_keltner(typical_price,periods)
+    atr_values = atr(close_data, high_data, low_data, periods)
+    
+    return ema + 2 * atr_values
+
+def evaluate_candlestick(candlestick_type, middleOne,psvra_candles,current_candle):
+    # Assuming 'middleOne' is a description like 'Bearish Red (Vol > 200%) Close'
+    
+    # Parse the volume percentage from the description
+    volume_percentage = int(middleOne.split(">")[-1].split("%")[0])
+
+    # Retrieve the latest candlestick data from your data source (you need to implement this part)
+    latest_candlestick = current_candle
+    open_price = [opens[1] for opens in psvra_candles]
+    high_array = [high[2] for high in psvra_candles]
+    low_array = [low[3] for low in psvra_candles]
+    close_array = [candle[4] for candle in psvra_candles]
+    volume_array = [volume[5] for volume in psvra_candles]
+    pvsra_high_array = [high[2] for high in psvra_candles]
+    pvsra_low_array = [low[3] for low in psvra_candles]
+    pvsra_volume_array = [volume[5] for volume in psvra_candles]
+    close_prices_array = [candle[4] for candle in psvra_candles]
+
+    # Check the volume
+    # is_high_volume = latest_candlestick['volume'] > volume_percentage / 100 * latest_candlestick['average_volume']
+    candle_type,av = pvsra_indicator(True, pvsra_volume_array, volume_array, pvsra_high_array, pvsra_low_array, high_array, open_price, low_array, close_prices_array, close_prices_array)
+    # Evaluate based on the candlestick type
+    
+    if   "High Volume Candlestick" in candlestick_type:
+        print ("Parameter color: ",middleOne, candle_type,candlestick_type)
+        if "Red" in middleOne and candle_type=='RVC':
+            return True
+        elif "Purple" in middleOne and candle_type=='PVC':
+            return True
+        elif "Blue" in middleOne and candle_type=='BVC':
+            return True
+        elif "Green" in middleOne and candle_type=='GVC':
+            return True
+        # Add other conditions for Blue, Green etc.
+    
+    print ("Not a vector candle.")
+    
+    return False
+
+def evaluate_indicator(indicator_type, middleTwo, operation,ohlcv,i,latest_price):
+    # Parse the number of periods from the indicator type
+    print ("Type: ",middleTwo)
+    periods = int(middleTwo.split()[-1])
+    print ("Period: ",periods)
+    
+    # Retrieve the price data for the required number of periods
+    price_data = [candle[4] for candle in ohlcv[i-periods:i]]
+
+    # Calculate the indicator value
+    if 'Simple Moving Average' in middleTwo:
+        # print (price_data)
+        indicator_value = sum(price_data) / periods
+    elif 'Exponential Moving Average' in middleTwo:
+        indicator_value = calculate_ema(price_data)  # You need to implement calculate_ema
+    # Calculate the indicator value
+    elif 'Keltner Channel Upper' in middleTwo:
+        price_data = [ohlcv[i] for i in range(i - periods + 1, i + 1)]
+        indicator_value = keltner_channel_upper(price_data, periods)
+
+    print (indicator_value)
+    
+
+
+    # Add other conditions for other types of indicators
+    print ("Indicator Value: ", indicator_value)
+    # Evaluate the operation
+    if operation == 'GreaterThan':
+        return latest_price > indicator_value  # You need to implement latest_price
+    elif operation == 'LessThan':
+        return latest_price < indicator_value
+    elif operation == 'EqualTo':
+        return latest_price == indicator_value
+    print(f"Indicator Value {indicator_value} is not {operation} then curren price {latest_price}" )
+    return False
 
 def find_exchange_by_id(user_data, exchange_id):
     # user_data = db.users.find_one({"_id": user_id})
@@ -727,24 +858,105 @@ def lambda_function(client,strategy_id):
                 
 def backtesting(client,strategy_id):
     collection = client['test']
-    strats=collection['strategies']
     print (strategy_id)
-    strategyID=strategy_id
+    # {'generalSettings': {'strategyName': 'bazil', 'strategyFolder': '', 'strategyDescription': '', 
+    # 'botLink': '', 'notes': ''}, 'orders': {'firstOrderSize': '50', 'extraOrderSize': '60', 
+    # 'orderType': 'Market', 'pairs': 'BTC/USDT'}, 'dca': {'dcaType': 'Signal', 'volumeMultiplier': '1', 
+    # 'maxExtraOrders': '10', 'minDistBetweenOrders': '', 'startExtraOrder': '', 'stepMultiplier': '1.1'},
+    #  'takeProfit': {'takeProfit': 'Fixed', 'minTakeProfit': '3'}, 'stopLoss': {'stopLoss': ''}, 
+    
+    #  'parameters': [{'1': 'High Volume Candlestick', '2': 'Indicator', 'operation': 'GreaterThan', 
+    #  'relation': '', 'middleOne': 'Bearish Red (Vol > 200%) Open',
+    #  'middleTwo': 'Simple Moving Average 20'}], 
+    
+    
+    # 'user': {'email': 'bazilsb7@gmail.com', 'id': 4, 
+    #  'firstName': 'Bazil', 'lastName': 'Sajjad', 'accountVerified': True}}
+# {
+#   'generalSettings': {
+#     'strategyName': 'bazil',
+#     'strategyFolder': '',
+#     'strategyDescription': '',
+#     'botLink': '',
+#     'notes': ''
+#   },
+#   'orders': {
+#     'firstOrderSize': '50',
+#     'extraOrderSize': '60',
+#     'orderType': 'Market',
+#     'pairs': 'BTC/USDT'
+#   },
+#   'dca': {
+#     'dcaType': 'Signal',
+#     'volumeMultiplier': '1',
+#     'maxExtraOrders': '10',
+#     'minDistBetweenOrders': '',
+#     'startExtraOrder': '',
+#     'stepMultiplier': '1.1'
+#   },
+#   'takeProfit': {
+#     'takeProfit': 'Fixed',
+#     'minTakeProfit': '3'
+#   },
+#   'stopLoss': {
+#     'stopLoss': ''
+#   },
+#   'parameters': [
+#     {
+#       '1': 'High Volume Candlestick',
+#       '2': 'Indicator',
+#       'operation': 'GreaterThan',
+#       'relation': '',
+#       'middleOne': 'Bearish Red (Vol > 200%) Open',
+#       'middleTwo': 'Simple Moving Average 20'
+#     },
+#     {
+#       '3': 'High Volume Candlestick',
+#       '4': 'Indicator',
+#       'operation': 'LessThan',
+#       'relation': 'AND',
+#       'middleOne': 'Bullish Green (Vol > 200%) Open',
+#       'middleTwo': 'Simple Moving Average 50'
+#     }
+#   ],
+#   'user': {
+#     'email': 'bazilsb7@gmail.com',
+#     'id': 4,
+#     'firstName': 'Bazil',
+#     'lastName': 'Sajjad',
+#     'accountVerified': True
+#   }
+# }
+
+    
+    
     do = strategy_id
-    order_size = do['orderSize']
-    safety_order = do['safetyOrderSize']
-    max_buy_orders = int(do['maxOrders'])
+    print ("This is the strategy")
+    print(do)
+ 
+    order_size = do['orders']['firstOrderSize']
+    
+    safety_order = do['orders']['extraOrderSize']
+    max_buy_orders = int(do['dca']['maxExtraOrders'])
+    volumeMultiplier= do['dca']['volumeMultiplier']
+    minDistBetweenOrders=do['dca']['minDistBetweenOrders']
+    startExtraOrder=do['dca']['startExtraOrder']
     # symbol = do['strategyPair']+'/USDT'
-    symbol = do['strategyPair']
-    timeframe = '1h'
-    multiplier = do['candleSizeAndVol']
-    stratType= do['strategyType']
-    orderType=do['orderType']
+    symbol = do['dropdownValues']['symbol']
+    position = do['dropdownValues']['position']
+    timeframe = do['dropdownValues']['timeframe']
+    multiplier = do['dca']['stepMultiplier']
+    if (multiplier == ''):
+        multiplier=1
+    stratType= 'LONG'
+    orderType=do['orders']['orderType']
+    print("Order Size: ",order_size)
+    
     profitC='USDT'
     sandbox='True'
-    buyOn=do['buyOnCondition']
-    ignore=do['ignoreCondition']
-    
+    # buyOn=do['buyOnCondition']
+    # ignore=do['ignoreCondition']
+
     try:
         multiplier= float(multiplier)
     except Exception as e:
@@ -810,38 +1022,9 @@ def backtesting(client,strategy_id):
     MA_cond=[]
     timeframe_vector='1h'
     timeframe_MA=[]
+    parameters = do['parameters']
 
-    print(do['indicators'][0]['chooseIndicatorValue'])
-    for indicators in do['indicators']:
-        if (indicators['chooseIndicatorValue']=='Vector Candle'):
-            enabledvector='True'
-            timeframe_vector=indicators['timeFrameValue']
-            for candle in indicators['candleValue']:
-                if candle == 'red':
-                    if (stratType=='Long'):
-                        red_action='buy'
-                    elif (stratType=='Short'):
-                        red_action='buy'
-                if candle == 'purple':
-                    if (stratType=='Long'):
-                        purple_action='buy'
-                    elif (stratType=='Short'):
-                        purple_action='buy'
-                if candle == 'blue':
-                    if (stratType=='Long'):
-                        blue_action='buy'
-                    elif (stratType=='Short'):
-                        blue_action='buy'
-                if candle == 'green':
-                    if (stratType=='Long'):
-                        green_action='buy'
-                    elif (stratType=='Short'):
-                        green_action='buy'
-        elif (indicators['chooseIndicatorValue']=='Moving Averages'):
-            enableMA='True'
-            timeframe_MA.append( indicators['timeFrameValue'])
-            MA_val.append(int(indicators['masValue']))
-            MA_cond.append(indicators['masCondition'])
+
 
 
 
@@ -849,27 +1032,15 @@ def backtesting(client,strategy_id):
     
 
 
-    ProfitType=do['takeProfit']
+    ProfitType=do['takeProfit']['takeProfit']
     take_profit_percentage=0
     try:
-        if (do['takeProfit']=='Fixed'):
-            take_profit_percentage = float(do['takeProfitPercent'])/100
+        if (do['takeProfit']['takeProfit']=='Fixed'):
+            take_profit_percentage = float(do['takeProfit']['minTakeProfit'])/100
     except:
         print("No Tp set")
     print ("Profit Required: ",take_profit_percentage)
-    print (do['userId'])
-    users=collection['users']
-    userObj=users.find_one(ObjectId(do['userId']))
-    print (userObj['exchanges'][0])
-    users=collection['users']
-    userObj=users.find_one(ObjectId(do['userId']))
-    print ()
-    db_exchange = do['exchange']
-    exchange_to = find_exchange_by_id(userObj, db_exchange)
-    print ("Exchangee ",exchange_to)
-    ex_type = exchange_to['exchangeName']
-
-    print (ex_type)
+   
 
 
     exchange = ccxt.binance()
@@ -895,7 +1066,10 @@ def backtesting(client,strategy_id):
     print (timeframe_MA)
     print (timeframe_vector)
     print(buyOn, type(buyOn))
-
+    if (position == 'long'):
+        action = 'buy'
+    else:
+        action = 'sell'
 
     
     current_order_size = float(order_size)
@@ -910,14 +1084,6 @@ def backtesting(client,strategy_id):
     ohlcv = fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000)
     print (len(ohlcv))
     # return
-    ohlcv_for_MA=[]
-    for i in range(0, len(timeframe_MA)):
-        if (timeframe_vector == timeframe_MA[i]):
-            ohlcv_for_MA.append(ohlcv)
-        else:
-            ohlcv_for_MA.append(fetch_ohlcv_my(exchange, symbol, timeframe_MA[i], limit=5000))
-            # ohlcv_for_MA[i] = ohlcv_for_MA[i][:-1]  
-    # ohlcv = ohlcv[:-1]
     iterator_loop=0
     for i in range(50, len(ohlcv)):
         print(iterator_loop, "Candle")
@@ -927,7 +1093,8 @@ def backtesting(client,strategy_id):
 
         # Calculate the 50-period SMA
 
-        if enabledvector == 'True':
+        # if enabledvector == 'True':
+        if True:
             # Fetch the latest candlestick data
             # print ("time",last_candle_timestamp, timestamp)
             open_price = [opens[1] for opens in psvra_candles]
@@ -948,18 +1115,42 @@ def backtesting(client,strategy_id):
             print ("============================\n")
             print("Timestamp"+(str(utc_time))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n")
             # Check if the candle type matches any of the conditions
-            action = None
-            if candle_type == 'RVC' and red_action != 'none':
-                action = red_action
-            elif candle_type == 'GVC' and green_action != 'none':
-                action = green_action
-            elif candle_type == 'BVC' and blue_action != 'none':
-                action = blue_action
-            elif candle_type == 'PVC' and purple_action != 'none':
-                action = purple_action
-            # Add other candle types if required
+            parameters = do['parameters']
+            should_buy = False
+            trueConditions= []
             
-            if action is not None:
+            print ("==parameters==")
+            for j, param in enumerate(parameters):
+                # Assume the keys are '1', '3', '5', etc., for candlesticks, and '2', '4', '6', etc., for indicators
+                candle_condition = evaluate_candlestick(param[str(j*2+1)], param['middleOne'],psvra_candles,current_candle)
+                
+                indicator_condition = evaluate_indicator(param[str(j*2+2)], param['middleTwo'], param['operation'],ohlcv,i,close)
+
+                # current_condition = candle_condition and indicator_condition
+                if (candle_condition and indicator_condition):
+                    trueConditions.append(True)
+                else:
+                    trueConditions.append(False)
+                # if i > 0 and param['relation'] == 'AND':
+                #     should_buy = should_buy and current_condition
+                # elif i > 0 and param['relation'] == 'OR':
+                #     should_buy = should_buy or current_condition
+                # else:
+                #     should_buy = current_condition
+
+            should_buy = trueConditions[0]
+
+            for j in range(1, len(trueConditions)):
+                if parameters[j]['relation'] == 'AND':
+                    should_buy = should_buy and trueConditions[j]
+                elif parameters[j]['relation'] == 'OR':
+                    should_buy = should_buy or trueConditions[j]
+
+            if should_buy:
+                # place_buy_order(config['orders'])
+                pass
+
+            if should_buy:
                 conditions_hit += 1
                 if conditions_ignored < int(ignore) and int(ignore)>0:
                     conditions_ignored += 1
@@ -971,83 +1162,30 @@ def backtesting(client,strategy_id):
                         if len(buy_orders) == 0:
                             first_order_candle_body_price = open_prices
                             first_order_candle_wick_price = high
-                        # Place a custom order
-                        if enableMA == 'True':
-                            all_conditions_met = True
-                            sma_values = []
-                            counter_MA=0
-                            for cond, val, tf in zip(MA_cond, MA_val, timeframe_MA):
-                                print (tf, val)
-                                # ohlcv_MA = fetch_with_retry(exchange, symbol, tf, val)
-                                # [i-10:i]
-                                ohlcv_MA =ohlcv_for_MA[counter_MA][i-val:i]
-                                counter_MA+=1
-                                closing_prices = [x[4] for x in ohlcv_MA]
-                                print ("LEn: ",i,len(ohlcv_MA))
-                                sma = calculate_sma(closing_prices, val)
-                                sma_values.append(sma)
-                                print ("SMA Values: ",sma_values)
-                                if cond == 'Above' and close <= sma:
-                                    all_conditions_met = False
-                                    break
-                                elif cond == 'Below' and close >= sma:
-                                    all_conditions_met = False
-                                    break
+                        order = {
+                                "symbol": symbol,
+                                "side": action,
+                                "price": close,
+                                "amount": current_order_size,
+                                "timestamp": timestamp
+                            }
+                        if len(buy_orders) == 1:
+                            current_order_size = float(safety_order)
+                        elif len(buy_orders) >1:
+                            print(type(current_order_size))
+                            print(type(multiplier))
+                            current_order_size *= float(multiplier)
 
-                            if all_conditions_met:
-                                order = {
-                                    "symbol": symbol,
-                                    "side": action,
-                                    "price": close,
-                                    "amount": current_order_size,
-                                    "timestamp": timestamp
-                                }
-                                if len(buy_orders) == 1:
-                                    current_order_size = float(safety_order)
-                                elif len(buy_orders) >1:
-                                    print(type(current_order_size))
-                                    print(type(multiplier))
-                                    current_order_size *= float(multiplier)
-            
-                                order_counter += 1
-                                if action == 'buy':
-                                    buy_orders.append(order)
-                                    total_buy_orders.append(order)
-                                    
-                                elif action == 'sell':
-                                    sell_orders.append(order)
-                                    total_sell_orders.append(order)
-                                    
-                                print(str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n')
-                                print("Order Filled for " + str(order['price']) + "\n")
-                                
-                            else:
-                                print("Moving average conditions not met for all MAs: " + ', '.join([f"{cond} MA {sma}" for cond, sma in zip(MA_cond, sma_values)]) + '\n')
-                        else:
-                            order = {
-                                    "symbol": symbol,
-                                    "side": action,
-                                    "price": close,
-                                    "amount": current_order_size,
-                                    "timestamp": timestamp
-                                }
-                            if len(buy_orders) == 1:
-                                current_order_size = float(safety_order)
-                            elif len(buy_orders) >1:
-                                print(type(current_order_size))
-                                print(type(multiplier))
-                                current_order_size *= float(multiplier)
-
-                            order_counter += 1
-                            if action == 'buy':
-                                buy_orders.append(order)
-                                total_buy_orders.append(order)
-                                print (order)
-                            elif action == 'sell':
-                                sell_orders.append(order)
-                                total_sell_orders.append(order)
-                            print(str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n')
-                            print("Order Filled for " + str(order['price'])+"\n")
+                        order_counter += 1
+                        if action == 'buy':
+                            buy_orders.append(order)
+                            total_buy_orders.append(order)
+                            print (order)
+                        elif action == 'sell':
+                            sell_orders.append(order)
+                            total_sell_orders.append(order)
+                        print(str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n')
+                        print("Order Filled for " + str(order['price'])+"\n")
 
 
                 elif conditions_hit% int (buyOn) !=0 or price_check(buy_orders, close)!=False:
@@ -1115,6 +1253,7 @@ def backtesting(client,strategy_id):
                 buy_orders=[]
                 profits+=profit
         iterator_loop+=1
+
     print ("Total Profit: ", profits)
     print (len(total_buy_orders))
     print (len(total_sell_orders))
@@ -1124,7 +1263,7 @@ def backtesting(client,strategy_id):
         "profit" : profits,
         "buy_orders":total_buy_orders,
         "sell_orders":total_sell_orders,
-        "candlesMA":ohlcv_for_MA
+        # "candlesMA":ohlcv_for_MA
     }
 
 
