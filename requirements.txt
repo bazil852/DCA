@@ -7,3 +7,4 @@ gunicorn==20.1.0
 uvicorn==0.21.1
 celery
 python-binance
+pyti
