@@ -463,7 +463,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     
     do = strats.find_one(ObjectId(strategyID))
     print ("Strategy is: ",do)
-    return
+    # return
     order_size = do['orderSize']
     safety_order = do['safetyOrderSize']
     max_buy_orders = int(do['maxOrders'])

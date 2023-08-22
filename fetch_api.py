@@ -103,16 +103,16 @@ def fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000):
 def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high, open_prices, low, pvsra_close, close):
     av = sum(pvsra_volume) / 10 if overridesym else sum(volume) / 10
     
-    print ("Close: ",pvsra_close[9],"| Open",open_prices[9])
-    if pvsra_close[9] >= open_prices[9]:
+    print ("Close: ",pvsra_close[8],"| Open",open_prices[8])
+    if pvsra_close[8] >= open_prices[8]:
         va = 'RC'
-        if av * 1.5 <= pvsra_volume[9] <= av * 2:
+        if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'BVC'
         elif pvsra_volume[9] > av * 2:
             va = 'GVC'
     else:
         va = 'GC'
-        if av * 1.5 <= pvsra_volume[9] <= av * 2:
+        if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'PVC'
         elif pvsra_volume[9] > av * 2:
             va = 'RVC'
