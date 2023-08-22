@@ -5,13 +5,13 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# app = Celery("FAST", broker="pyamqp://guest@localhost//")
+app = Celery("FAST", broker="amqps://zydjctdd:alz55-mvyyNYOk7OV3qR3Uhzfl16p-jE@mini-crimson-codfish.rmq4.cloudamqp.com/zydjctdd")
 
 # amqps://ouifibyf:V541bgbpT1dP6dQnOhHRy1yWJ97vdqmO@stingray.rmq.cloudamqp.com/ouifibyf
 # amqps://ouifibyf:V541bgbpT1dP6dQnOhHRy1yWJ97vdqmO@stingray.rmq.cloudamqp.com/ouifibyf
 
 
-app = Celery("FAST", broker=os.environ['CLOUDAMQP_URL'])
+# app = Celery("FAST", broker=os.environ['CLOUDAMQP_URL'])
 
 @app.task
 def run_bot_instance( bot_id, bot_name, bot_type, description, 
