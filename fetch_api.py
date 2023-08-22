@@ -1203,7 +1203,7 @@ def backtesting(client,strategy_id):
     iterator_loop=0
     for i in range(50, len(ohlcv)):
         print(iterator_loop, "Candle")
-        current_candle = ohlcv[i]
+        current_candle = ohlcv[i-1]
         psvra_candles=ohlcv[i-9:i+1]
         timestamp, open_prices, high, low, close, volume = current_candle
         print("Timestamp: "+(str(datetime.utcfromtimestamp(timestamp/1000)))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"\n")
