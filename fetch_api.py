@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from binance.client import Client
 from pyti.average_true_range import average_true_range 
 import numpy as np
+import pytz
 
 
 
@@ -798,10 +799,12 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
                 # Call the pvsra_indicator function to determine the type of candle
                 candle_type,av = pvsra_indicator(overridesym, pvsra_volume_array, volume_array, pvsra_high_array, pvsra_low_array, high_array, open_price, low_array, close_prices_array, close_prices_array)
                 utc_time = datetime.utcfromtimestamp(timestamp / 1000.0)
+                utc_time = utc_time.replace(tzinfo=pytz.utc)
+                utc_plus_one_time = utc_time.astimezone(pytz.timezone('Etc/GMT-1'))
                 # print ("============================")
                 # print("Timestamp",utc_time.strftime('%Y-%m-%d %H:%M:%S'),"  \nOpen:",open_prices,"  High:",high,"  Low:",low,"  Close:",close,"  \nCandle Type: ",candle_type,"  \nAvg. Vol:",round(av,3),"  Cur. Vol:",pvsra_volume)
                 logs += "============================\n"
-                logs+="Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n"
+                logs+="Timestamp"+str(utc_plus_one_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n"
                 # Check if the candle type matches any of the conditions
                 parameters = do['parameters']
                 should_buy = False

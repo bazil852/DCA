@@ -8,3 +8,4 @@ uvicorn==0.21.1
 celery
 python-binance
 pyti
+pytz
