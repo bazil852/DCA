@@ -108,13 +108,13 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
         va = 'GC'
         if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'BVC'
-        elif pvsra_volume[9] > av * 2:
+        elif pvsra_volume[8] > av * 2:
             va = 'GVC'
     else:
         va = 'RC'
         if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'PVC'
-        elif pvsra_volume[9] > av * 2:
+        elif pvsra_volume[8] > av * 2:
             va = 'RVC'
     
     return va, av
@@ -517,6 +517,26 @@ def map_order_to_mongo_doc(order, strategy_id, user_id):
         "userId": {"$oid": user_id},
     }
     return mongo_doc
+
+
+def place_order_with_retry(symbol, orderType, action, quantity,exchange, retries=1):
+    for _ in range(retries):
+        try:
+            order = exchange.create_order(
+                symbol,
+                orderType,
+                action,
+                str(round(quantity, 3))
+            )
+            return order  # Return the order object if successful
+        except Exception as e:
+            print(f"Error placing order (attempt {_ + 1}): {e}")
+            logs += "Error Placing order Retrying"
+            time.sleep(1)  # Optional: Add a short delay between attempts
+    return None  # Return None if all attempts failed
+
+def calculate_take_profit_price(buy_price, take_profit_percentage):
+    return buy_price * (1 + take_profit_percentage / 100)
 
 def lambda_function(client,bot_id, bot_name, bot_type, description, 
         exchange_id, exchange_name, exchange_type, api_key, secret_key, user_id,

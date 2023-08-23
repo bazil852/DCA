@@ -103,16 +103,16 @@ def fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000):
 def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high, open_prices, low, pvsra_close, close):
     av = sum(pvsra_volume) / 10 if overridesym else sum(volume) / 10
     
-    print ("Close: ",pvsra_close[9],"| Open",open_prices[9])
-    if pvsra_close[9] >= open_prices[9]:
-        va = 'RC'
-        if av * 1.5 <= pvsra_volume[9] <= av * 2:
+    print ("Close: ",pvsra_close[8],"| Open",open_prices[8])
+    if pvsra_close[8] >= open_prices[8]:
+        va = 'GC'
+        if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'BVC'
         elif pvsra_volume[9] > av * 2:
             va = 'GVC'
     else:
-        va = 'GC'
-        if av * 1.5 <= pvsra_volume[9] <= av * 2:
+        va = 'RC'
+        if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'PVC'
         elif pvsra_volume[9] > av * 2:
             va = 'RVC'
@@ -351,12 +351,6 @@ def evaluate_indicator(indicator_type, middleTwo, operation,ohlcv,i,latest_price
     print ("Type: ",middleTwo)
     periods = (middleTwo.split()[-1])
     print ("Period: ",periods)
-
-
-    
-    # Retrieve the price data for the required number of periods
-    
-
     # Calculate the indicator value
     if 'Simple Moving Average' in middleTwo:
         # print (price_data)
@@ -417,6 +411,73 @@ def evaluate_indicator(indicator_type, middleTwo, operation,ohlcv,i,latest_price
         print(f"Indicator Value {indicator_value} is not {operation} then curren price {latest_price}" )
         return False
 
+
+def evaluate_indicator_realtime(indicator_type, middleTwo, operation, ohlcv_buffer, latest_price):
+    # Parse the number of periods from the indicator type
+    print ("Type: ",middleTwo)
+    periods = (middleTwo.split()[-1])
+    print ("Period: ",periods)
+    # Calculate the indicator value
+    if 'Simple Moving Average' in middleTwo:
+        price_data = [candle[4] for candle in ohlcv_buffer[-int(periods):]]
+        indicator_value = sum(price_data) / int(periods)
+    elif 'Exponential Moving Average' in middleTwo:
+        price_data = [candle[4] for candle in ohlcv_buffer[-int(periods):]]
+        indicator_value = calculate_ema(price_data) 
+        indicator_value = calculate_ema(price_data)  # You need to implement calculate_ema
+    # Calculate the indicator value
+    elif 'Tom Demark' in middleTwo:
+        price_data = ohlcv_buffer[-20:]  # Assuming 20 is the max candles you want
+        td_sequence = tom_demark_sequence(price_data, int(periods))
+        if "buy" in td_sequence.lower():
+            indicator_value = "buy"
+        elif "sell" in td_sequence.lower():
+            indicator_value = "sell"
+        else:
+            indicator_value = "neutral"
+    elif 'Bollinger Bands' in middleTwo:
+        price_data = [candle[4] for candle in ohlcv_buffer[-20:]]
+        indicator_value = bollinger_band_position(price_data, periods)
+    elif 'Price' in middleTwo:
+        print ("Indicator Type")
+        indicator_value=latest_price
+    elif 'Keltner Channel' in middleTwo:
+        price_data = ohlcv_buffer[-int(periods):]
+        basis, upper, lower = keltner_channels(price_data, int(periods))
+
+        if "Upper Band" in middleTwo:
+            indicator_value = upper
+        elif "Lower Band" in middleTwo:
+            indicator_value = lower
+        else:  # Assuming Middle Band is equivalent to the basis
+            indicator_value = basis
+
+    print ("Indicator Value: ",indicator_value)
+    
+
+
+    # Add other conditions for other types of indicators
+    print ("Indicator Value: ", indicator_value)
+    # Evaluate the operation
+    if "Tom Demark" in middleTwo:
+        if operation == 'EqualTo':
+            return indicator_value == "buy" or indicator_value == "sell"
+        else:
+            print(f"Invalid operation {operation} for Tom Demark indicator")
+            return False
+    else:
+        if operation == 'GreaterThan':
+            return latest_price > indicator_value  # You need to implement latest_price
+        elif operation == 'LessThan':
+            return latest_price < indicator_value
+        elif operation == 'EqualTo':
+            return latest_price == indicator_value
+        elif operation == 'GreaterOrEqual':
+            return latest_price >= indicator_value
+        print(f"Indicator Value {indicator_value} is not {operation} then curren price {latest_price}" )
+        return False
+
+
 def find_exchange_by_id(user_data, exchange_id):
     # user_data = db.users.find_one({"_id": user_id})
 
@@ -427,6 +488,10 @@ def find_exchange_by_id(user_data, exchange_id):
             return exchange
     return None
 
+def update_buffer(ohlcv_buffer, new_candle, max_buffer_length=200):  # For instance, 200
+    if len(ohlcv_buffer) >= max_buffer_length:
+        ohlcv_buffer.pop(0)  # Remove oldest candle
+    ohlcv_buffer.append(new_candle)
 
 def map_order_to_mongo_doc(order, strategy_id, user_id):
     mongo_doc = {
@@ -453,6 +518,26 @@ def map_order_to_mongo_doc(order, strategy_id, user_id):
     }
     return mongo_doc
 
+
+def place_order_with_retry(symbol, orderType, action, quantity,exchange, retries=1):
+    for _ in range(retries):
+        try:
+            order = exchange.create_order(
+                symbol,
+                orderType,
+                action,
+                str(round(quantity, 3))
+            )
+            return order  # Return the order object if successful
+        except Exception as e:
+            print(f"Error placing order (attempt {_ + 1}): {e}")
+            logs += "Error Placing order Retrying"
+            time.sleep(1)  # Optional: Add a short delay between attempts
+    return None  # Return None if all attempts failed
+
+def calculate_take_profit_price(buy_price, take_profit_percentage):
+    return buy_price * (1 + take_profit_percentage / 100)
+
 def lambda_function(client,bot_id, bot_name, bot_type, description, 
         exchange_id, exchange_name, exchange_type, api_key, secret_key, user_id,
         strategy_ids, time_frame, user_email, user_first_name, user_last_name, 
@@ -460,23 +545,28 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     collection = client['test']
     strats=collection['strategies']
     strategyID=strategy_ids
-    
+    ohlcv_buffer = []
     do = strats.find_one(ObjectId(strategyID))
     print ("Strategy is: ",do)
-    # return
-    order_size = do['orderSize']
-    safety_order = do['safetyOrderSize']
-    max_buy_orders = int(do['maxOrders'])
+    
+    order_size = do['orders']['firstOrderSize']
+    safety_order = do['orders']['extraOrderSize']
+    max_buy_orders = int(do['dca']['maxExtraOrders'])
     # symbol = do['strategyPair']+'/USDT'
-    symbol = do['strategyPair']
-    timeframe = '1h'
-    multiplier = do['candleSizeAndVol']
-    stratType= do['strategyType']
-    orderType=do['orderType']
+    volumeMultiplier= do['dca']['volumeMultiplier']
+    minDistBetweenOrders=do['dca']['minDistBetweenOrders']
+    startExtraOrder=do['dca']['startExtraOrder']
+
+    symbol = do['orders']['pairs']
+    position = 'long'
+    timeframe = time_frame
+    multiplier = do['dca']['stepMultiplier']
+    stratType= 'LONG'
+    orderType=do['orders']['orderType']
     profitC='USDT'
     sandbox='True'
-    buyOn=do['buyOnCondition']
-    ignore=do['ignoreCondition']
+    # buyOn=do['buyOnCondition']
+    # ignore=do['ignoreCondition']
     
     try:
         multiplier= float(multiplier)
@@ -542,64 +632,27 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     timeframe_vector='1h'
     timeframe_MA=[]
 
-    print(do['indicators'][0]['chooseIndicatorValue'])
-    for indicators in do['indicators']:
-        if (indicators['chooseIndicatorValue']=='Vector Candle'):
-            enabledvector='True'
-            timeframe_vector=indicators['timeFrameValue']
-            for candle in indicators['candleValue']:
-                if candle == 'red':
-                    if (stratType=='Long'):
-                        red_action='buy'
-                    elif (stratType=='Short'):
-                        red_action='sell'
-                if candle == 'purple':
-                    if (stratType=='Long'):
-                        purple_action='buy'
-                    elif (stratType=='Short'):
-                        purple_action='sell'
-                if candle == 'blue':
-                    if (stratType=='Long'):
-                        blue_action='buy'
-                    elif (stratType=='Short'):
-                        blue_action='sell'
-                if candle == 'green':
-                    if (stratType=='Long'):
-                        green_action='buy'
-                    elif (stratType=='Short'):
-                        green_action='sell'
-        elif (indicators['chooseIndicatorValue']=='Moving Averages'):
-            enableMA='True'
-            timeframe_MA.append( indicators['timeFrameValue'])
-            MA_val.append(int(indicators['masValue']))
-            MA_cond.append(indicators['masCondition'])
-
-
-
+    parameters = do['parameters']
+    
+    if (position == 'long'):
+        action = 'buy'
+    else:
+        action = 'sell'
 
     
 
 
-    ProfitType=do['takeProfit']
+    ProfitType=do['takeProfit']['takeProfit']
     take_profit_percentage=0
     try:
         if (do['takeProfit']=='Fixed'):
             take_profit_percentage = float(do['takeProfitPercent'])/100
     except:
         print("No Tp set")
-    print (do['userId'])
-    users=collection['users']
-    userObj=users.find_one(ObjectId(do['userId']))
-    print (userObj['exchanges'][0])
-    users=collection['users']
-    userObj=users.find_one(ObjectId(do['userId']))
-    print ()
-    db_exchange = do['exchange']
-    exchange_to = find_exchange_by_id(userObj, db_exchange)
-    print ("Exchangee ",exchange_to)
-    ex_type = exchange_to['exchangeName']
-    APIKEY= exchange_to['apiKey']
-    APISECRET= exchange_to['apiSecret']
+ 
+    ex_type = exchange_name
+    APIKEY= api_key
+    APISECRET= secret_key
     print (ex_type)
     print (APIKEY)
     print (APISECRET)
@@ -663,12 +716,12 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     print (timeframe_vector)
     print(buyOn, type(buyOn))
 
-
-    logs= str(order_size)+'<br />'+str(safety_order)+'<br />'+str(multiplier)+'<br />'+str(max_buy_orders)+'<br />'+str(timeframe)+'<br />'+str(orderType)+'<br />'+str(red_action)+'<br />'+str(purple_action)+'<br />'+str(blue_action)+'<br />'+str(green_action)+'<br />'
     
-    update_operation = {"$set": {"logs":logs}}
-    result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
-
+    logs= str(order_size)+'<br />'+str(safety_order)+'<br />'+str(multiplier)+'<br />'+str(max_buy_orders)+'<br />'+str(timeframe)+'<br />'+str(orderType)+'<br />'+str(red_action)+'<br />'+str(purple_action)+'<br />'+str(blue_action)+'<br />'+str(green_action)+'<br />'
+    bots_collection = collection['bots']
+    update_operation = {"$set": {"logs": logs}}
+    bot_id_as_object = ObjectId(bot_id)
+    result = bots_collection.update_one({"_id": bot_id_as_object}, update_operation)
     if result.modified_count > 0:
         print("Document updated successfully.")
     else:
@@ -682,27 +735,41 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
 
     timestamp, open_prices, high, low, close, volume=0,0,0,0,0,0
     psvra_candles=[]
+    collection = client['test']
+    bots_collection = collection['bots']
+    bot_id_as_object = ObjectId(bot_id)        
+    bot_document = bots_collection.find_one({"_id": bot_id_as_object})
+    state = bot_document.get('state', '')
+    
     while True:
         logs = ''
         try:
-            if (do['state']=='off'):
+            if (state=='off'):
                 print ("State is off check db. Waiting for 3 seconds")
                 time.sleep(6)
                 collection = client['test']
-                strats=collection['strategies']
-                strategyID=strategy_id
-                do = strats.find_one(ObjectId(strategyID))
-                if (do['state']=='off'):
+                bots_collection = collection['bots']
+                bot_id_as_object = ObjectId(bot_id)        
+                bot_document = bots_collection.find_one({"_id": bot_id_as_object})
+                state = bot_document.get('state', '')
+                if (state=='off'):
                     print ("State still not changed exiting.....")
-                    return
+                # collection = client['test']
+                # strats=collection['bots']
+                # strategyID=bot_id
+                # do = strats.find_one(ObjectId(strategyID))
+                # if (state=='off'):
+                #     print ("State still not changed exiting.....")
+                return
                 print("State changed :)")
         except Exception as e:
             print("Error")
             print (e)
         try:
-            psvra_candles=fetch_with_retry(exchange, symbol, timeframe_vector,10)
+            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,10)
             ohlcv = psvra_candles[-2]
             timestamp, open_prices, high, low, close, volume = ohlcv
+            update_buffer(ohlcv_buffer, ohlcv)
         except Exception as e:
             print("Error")
             print (e)
@@ -712,7 +779,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
 
         # Calculate the 50-period SMA
 
-        if enabledvector == 'True':
+        if True:
             # Fetch the latest candlestick data
             # print ("time",last_candle_timestamp, timestamp)
             if last_candle_timestamp != timestamp:
@@ -736,177 +803,115 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
                 logs += "============================\n"
                 logs+="Timestamp"+str(utc_time.strftime('%Y-%m-%d %H:%M:%S'))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"  \nCandle Type: "+candle_type+"  \nAvg. Vol:"+str(round(av,3))+"  Cur. Vol:"+str(pvsra_volume)+"\n"
                 # Check if the candle type matches any of the conditions
-                action = None
-                if candle_type == 'RVC' and red_action != 'none':
-                    action = red_action
-                elif candle_type == 'GVC' and green_action != 'none':
-                    action = green_action
-                elif candle_type == 'BVC' and blue_action != 'none':
-                    action = blue_action
-                elif candle_type == 'PVC' and purple_action != 'none':
-                    action = purple_action
-                # Add other candle types if required
+                parameters = do['parameters']
+                should_buy = False
+                trueConditions= []
                 
-                if action is not None:
+                for j, param in enumerate(parameters):
+                    # Assume the keys are '1', '3', '5', etc., for candlesticks, and '2', '4', '6', etc., for indicators
+                    if ("(Vol >" in param['middleOne']):
+                        candle_condition = evaluate_candlestick(param[str(j*2+1)], param['middleOne'],psvra_candles,ohlcv)
+                    else:
+                        candle_condition = evaluate_indicator_realtime(param[str(j*2+1)], param['middleOne'], param['operation'],ohlcv_buffer,close)
+                    indicator_condition = evaluate_indicator_realtime(param[str(j*2+2)], param['middleTwo'], param['operation'],ohlcv_buffer,close)
+
+                    # current_condition = candle_condition and indicator_condition
+                    if (candle_condition and indicator_condition):
+                        trueConditions.append(True)
+                    else:
+                        trueConditions.append(False)
+                    # if i > 0 and param['relation'] == 'AND':
+                    #     should_buy = should_buy and current_condition
+                    # elif i > 0 and param['relation'] == 'OR':
+                    #     should_buy = should_buy or current_condition
+                    # else:
+                    #     should_buy = current_condition
+
+                # return
+                should_buy = trueConditions[0]
+
+                for j in range(1, len(trueConditions)):
+                    if parameters[j]['relation'] == 'AND':
+                        should_buy = should_buy and trueConditions[j]
+                    elif parameters[j]['relation'] == 'OR':
+                        should_buy = should_buy or trueConditions[j]
+                
+                if should_buy:
                     conditions_hit += 1
                     if conditions_ignored < int(ignore) and int(ignore)>0:
                         conditions_ignored += 1
                         print(f"Ignored condition {conditions_ignored}")
                         logs += "Ignored condition " + str(conditions_ignored) + '\n'
-                    elif conditions_hit % int(buyOn) == 0 and price_check(buy_orders, close)==False and order_counter<max_buy_orders:
+                    elif  price_check(buy_orders, close)==False and order_counter<max_buy_orders:
                     # Place the order using ccxt
                         if action == 'buy' or action == 'sell':
-                            if len(buy_orders) == 0 and (candle_type =='RVC' or candle_type =='PVC'):
+                            if len(buy_orders) == 0:
                                 first_order_candle_body_price = open_prices
                                 first_order_candle_wick_price = high
-                            elif len(buy_orders) == 0 and (candle_type =='GVC' or candle_type =='BVC'):
-                                first_order_candle_body_price = close
-                                first_order_candle_wick_price = low
                             # Place a custom order
                             order_placed = False
                             retries = 1
-                            if enableMA == 'True':
-                                all_conditions_met = True
-                                sma_values = []
+                            for _ in range(retries):
+                                try:
+                                    order = exchange.create_order(
+                                        symbol,
+                                        orderType,
+                                        action,
+                                        str(round((float(current_order_size) / close), 3))
+                                    )
+                                    order_placed = True
+                                    break
+                                except Exception as e:
+                                    print(f"Error placing order (attempt {_ + 1}): {e}")
+                                    logs+="Error Placing order Retrying"
+                                    time.sleep(1)  # Optional: Add a short delay between attempts
 
-                                for cond, val, tf in zip(MA_cond, MA_val, timeframe_MA):
-                                    print (tf, val)
-                                    ohlcv_MA = fetch_with_retry(exchange, symbol, tf, val)
-                                    closing_prices = [x[4] for x in ohlcv_MA]
-
-                                    sma = calculate_sma(closing_prices, val)
-                                    sma_values.append(sma)
-
-                                    if cond == 'Above' and close <= sma:
-                                        all_conditions_met = False
-                                        break
-                                    elif cond == 'Below' and close >= sma:
-                                        all_conditions_met = False
-                                        break
-
-                                if all_conditions_met:
-                                    for _ in range(retries):
-                                        try:
-                                            order = exchange.create_order(
-                                                symbol,
-                                                orderType,
-                                                action,
-                                                str(round((float(current_order_size) / close), 3))
-                                            )
-                                            order_placed = True
-                                            break
-                                        except Exception as e:
-                                            print(f"Error placing order (attempt {_ + 1}): {e}")
-                                            logs += "Error Placing order Retrying"
-                                            time.sleep(1)
-
-                                    if order_placed:
-                                        print (order)
-                                        order_counter += 1
-                                        collection = client['test']
-                                        if (ex_type == "Binance Spot"):
-                                            mongo_doc = map_order_to_mongo_doc(order, strategy_id, do['userId'])
-                                        else:
-                                            mongo_doc = {
-                                            "_id": order["info"]["orderId"],
-                                            "symbol": order["info"]["symbol"],
-                                            "status": order["info"]["status"],
-                                            "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
-                                            "executedQty": {"$numberDouble": order["info"]["executedQty"]},
-                                            "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
-                                            "timeInForce": order["info"]["timeInForce"],
-                                            "type": order["info"]["type"],
-                                            "side": order["info"]["side"],
-                                            "price": {"$numberInt": order["price"]},
-                                            "cost": {"$numberDouble": order["cost"]},
-                                            "average": {"$numberInt": order["average"]},
-                                            "filled": {"$numberDouble": order["filled"]},
-                                            "remaining": {"$numberInt": order["remaining"]},
-                                            "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
-                                            "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
-                                            "strategyId": {"$oid": strategy_id},  # assuming a static value for this example
-                                            "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
-                                            "__v": {"$numberInt": "0"},
-                                            "userId": {"$oid": do['userId']}, }
-                                        
-                                        orders=collection['orders']
-                                        orders.insert_one(mongo_doc)
-                                        if action == 'buy':
-                                            buy_orders.append(order)
-                                        elif action == 'sell':
-                                            sell_orders.append(order)
-                                        if len(buy_orders) == 1:
-                                            current_order_size = safety_order
-                                        elif len(buy_orders) > 1:
-                                            current_order_size *= multiplier
-                                        logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
-                                        logs += "Order Filled for " + str(order['price']) + "\n"
-                                    else:
-                                        print(f"Failed to place {action} order after {retries} attempts")
+                            if order_placed:
+                                print (order)
+                                order_counter += 1
+                                collection = client['test']
+                                if (ex_type == "Binance Spot"):
+                                        mongo_doc = map_order_to_mongo_doc(order, bot_id, user_id)
                                 else:
-                                    logs += "Moving average conditions not met for all MAs: " + ', '.join([f"{cond} MA {sma}" for cond, sma in zip(MA_cond, sma_values)]) + '\n'
-                            else:
-                                for _ in range(retries):
-                                    try:
-                                        order = exchange.create_order(
-                                            symbol,
-                                            orderType,
-                                            action,
-                                            str(round((float(current_order_size) / close), 3))
-                                        )
-                                        order_placed = True
-                                        break
-                                    except Exception as e:
-                                        print(f"Error placing order (attempt {_ + 1}): {e}")
-                                        logs+="Error Placing order Retrying"
-                                        time.sleep(1)  # Optional: Add a short delay between attempts
-
-                                if order_placed:
+                                    mongo_doc = {
+                                    "_id": order["info"]["orderId"],
+                                    "symbol": order["info"]["symbol"],
+                                    "status": order["info"]["status"],
+                                    "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
+                                    "executedQty": {"$numberDouble": order["info"]["executedQty"]},
+                                    "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
+                                    "timeInForce": order["info"]["timeInForce"],
+                                    "type": order["info"]["type"],
+                                    "side": order["info"]["side"],
+                                    "price": {"$numberInt": order["price"]},
+                                    "cost": {"$numberDouble": order["cost"]},
+                                    "average": {"$numberInt": order["average"]},
+                                    "filled": {"$numberDouble": order["filled"]},
+                                    "remaining": {"$numberInt": order["remaining"]},
+                                    "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
+                                    "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
+                                    "strategyId": {"$oid": bot_id},  # assuming a static value for this example
+                                    "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
+                                    "__v": {"$numberInt": "0"},
+                                    "userId": {"$oid": user_id}, }
+                                
+                                orders=collection['orders']
+                                orders.insert_one(mongo_doc)
+                                if action == 'buy':
+                                    buy_orders.append(order)
                                     print (order)
-                                    order_counter += 1
-                                    collection = client['test']
-                                    if (ex_type == "Binance Spot"):
-                                            mongo_doc = map_order_to_mongo_doc(order, strategy_id, do['userId'])
-                                    else:
-                                        mongo_doc = {
-                                        "_id": order["info"]["orderId"],
-                                        "symbol": order["info"]["symbol"],
-                                        "status": order["info"]["status"],
-                                        "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
-                                        "executedQty": {"$numberDouble": order["info"]["executedQty"]},
-                                        "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
-                                        "timeInForce": order["info"]["timeInForce"],
-                                        "type": order["info"]["type"],
-                                        "side": order["info"]["side"],
-                                        "price": {"$numberInt": order["price"]},
-                                        "cost": {"$numberDouble": order["cost"]},
-                                        "average": {"$numberInt": order["average"]},
-                                        "filled": {"$numberDouble": order["filled"]},
-                                        "remaining": {"$numberInt": order["remaining"]},
-                                        "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
-                                        "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
-                                        "strategyId": {"$oid": strategy_id},  # assuming a static value for this example
-                                        "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
-                                        "__v": {"$numberInt": "0"},
-                                        "userId": {"$oid": do['userId']}, }
-                                    
-                                    orders=collection['orders']
-                                    orders.insert_one(mongo_doc)
-                                    if action == 'buy':
-                                        buy_orders.append(order)
-                                        print (order)
-                                    elif action == 'sell':
-                                        sell_orders.append(order)
-                                    if len(buy_orders) == 1:
-                                        current_order_size = safety_order
-                                    elif len(buy_orders) >1:
-                                        current_order_size *= multiplier
-                                    logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
-                                    logs += "Order Filled for " + str(order['price'])+"\n"
-                                else:
-                                        print(f"Failed to place {action} order after {retries} attempts")
+                                elif action == 'sell':
+                                    sell_orders.append(order)
+                                if len(buy_orders) == 1:
+                                    current_order_size = safety_order
+                                elif len(buy_orders) >1:
+                                    current_order_size *= multiplier
+                                logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
+                                logs += "Order Filled for " + str(order['price'])+"\n"
+                            else:
+                                    print(f"Failed to place {action} order after {retries} attempts")
 
-                    elif conditions_hit% int (buyOn) !=0 or price_check(buy_orders, close)!=False:
+                    elif price_check(buy_orders, close)!=False:
                         # print ("buy on condition ignore : ",conditions_hit,"%",buyOn,"=",conditions_hit% int (buyOn))
                         # print ("price returned by Price check ",price_check(buy_orders,close))
                         logs += "buy on condition ignore : " + str(conditions_hit)+"%"+str(buyOn)+"="+str((conditions_hit)% int (buyOn)) + '\n'
@@ -978,13 +983,14 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
         if (len(logs)>2):
             print (logs)
             collection = client['test']
-            strats=collection['strategies']
-            strategyID=strategy_id
-            do = strats.find_one(ObjectId(strategyID))
+            bots_collection = collection['bots']
+            bot_id_as_object = ObjectId(bot_id)        
             logs=logs.replace('\n','<br />')
             logs = remove_extra_br(logs)
-            update_operation = {"$set": {"logs": do['logs']+'<br />'+logs}}
-            result = strats.update_one({"_id":ObjectId(strategyID)}, update_operation)
+            bot_document = bots_collection.find_one({"_id": bot_id_as_object})
+            current_logs = bot_document.get('logs', '')
+            update_operation = {"$set": {"logs": current_logs + '<br />' + logs}}
+            result = bots_collection.update_one({"_id": bot_id_as_object}, update_operation)
                 
 def backtesting(client,strategy_id):
     collection = client['test']
@@ -1217,7 +1223,7 @@ def backtesting(client,strategy_id):
     iterator_loop=0
     for i in range(50, len(ohlcv)):
         print(iterator_loop, "Candle")
-        current_candle = ohlcv[i]
+        current_candle = ohlcv[i-1]
         psvra_candles=ohlcv[i-9:i+1]
         timestamp, open_prices, high, low, close, volume = current_candle
         print("Timestamp: "+(str(datetime.utcfromtimestamp(timestamp/1000)))+"  \nOpen:"+str(open_prices)+"  High:"+str(high)+"  Low:"+str(low)+"  Close:"+str(close)+"\n")
