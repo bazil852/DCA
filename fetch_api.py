@@ -104,21 +104,31 @@ def fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000):
 def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high, open_prices, low, pvsra_close, close):
     av = sum(pvsra_volume) / 10 if overridesym else sum(volume) / 10
     
+    # Calculate spread x volume product for the current candle
+    current_product = (pvsra_high[8] - pvsra_low[8]) * pvsra_volume[8]
+    
+    # Calculate spread x volume product for the last 10 candles
+    last_10_products = [(pvsra_high[i] - pvsra_low[i]) * pvsra_volume[i] for i in range(8-10, 8)]
+    
+    # Determine if the current product is a climax based on the last 10 products
+    is_climax_by_product = current_product >= max(last_10_products)
+
     print ("Close: ",pvsra_close[8],"| Open",open_prices[8])
     if pvsra_close[8] >= open_prices[8]:
-        va = 'GC' #GC
-        if av * 1.5 <= pvsra_volume[8] <= av * 2:
-            va = 'BVC'
+        va = 'GC' # Green Candle
+        if (av * 1.5 <= pvsra_volume[8] <= av * 2) or is_climax_by_product:
+            va = 'BVC'  # Blue Volume Climax
         elif pvsra_volume[8] > av * 2:
-            va = 'GVC'
+            va = 'GVC'  # Green Volume Climax
     else:
-        va = 'RC' #RC
-        if av * 1.5 <= pvsra_volume[8] <= av * 2:
-            va = 'PVC'
+        va = 'RC'  # Red Candle
+        if (av * 1.5 <= pvsra_volume[8] <= av * 2) or is_climax_by_product:
+            va = 'PVC'  # Purple Volume Climax
         elif pvsra_volume[8] > av * 2:
-            va = 'RVC'
+            va = 'RVC'  # Red Volume Climax
     
     return va, av
+
 
 
 
@@ -820,7 +830,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
             print("Error")
             print (e)
         try:
-            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,11)
+            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,10)
             ohlcv = psvra_candles[-2]
             timestamp, open_prices, high, low, close, volume = ohlcv
             update_buffer(ohlcv_buffer, ohlcv)
