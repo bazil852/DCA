@@ -106,13 +106,13 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
     
     print ("Close: ",pvsra_close[8],"| Open",open_prices[8])
     if pvsra_close[8] >= open_prices[8]:
-        va = 'GC'
+        va = 'RVC' #GC
         if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'BVC'
         elif pvsra_volume[8] > av * 2:
             va = 'GVC'
     else:
-        va = 'RC'
+        va = 'RVC' #RC
         if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'PVC'
         elif pvsra_volume[8] > av * 2:
@@ -412,23 +412,40 @@ def evaluate_indicator(indicator_type, middleTwo, operation,ohlcv,i,latest_price
         print(f"Indicator Value {indicator_value} is not {operation} then curren price {latest_price}" )
         return False
 
+def get_past_candles(exchange, symbol, timeframe, period):
+    """
+    Retrieves past candles for a specified period.
 
-def evaluate_indicator_realtime(indicator_type, middleTwo, operation, ohlcv_buffer, latest_price):
+    Parameters:
+    - exchange: The ccxt exchange instance.
+    - symbol: Trading pair symbol (e.g., 'BTC/USDT').
+    - timeframe: The timeframe for the candles (e.g., '1m' for 1 minute candles).
+    - period: The number of past candles to retrieve.
+
+    Returns:
+    - A list of past candles.
+    """
+    ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=period)
+    return ohlcv
+
+def evaluate_indicator_realtime(indicator_type, middleTwo, operation, latest_price, latest_candle, exchange,symbol,timeframe):
     # Parse the number of periods from the indicator type
     print ("Type: ",middleTwo)
     periods = (middleTwo.split()[-1])
     print ("Period: ",periods)
     # Calculate the indicator value
     if 'Simple Moving Average' in middleTwo:
-        price_data = [candle[4] for candle in ohlcv_buffer[-int(periods):]]
+        past_candles = get_past_candles(exchange, symbol, timeframe, int(periods))
+        price_data = [candle[4] for candle in past_candles]
         indicator_value = sum(price_data) / int(periods)
     elif 'Exponential Moving Average' in middleTwo:
-        price_data = [candle[4] for candle in ohlcv_buffer[-int(periods):]]
+        past_candles = get_past_candles(exchange, symbol, timeframe, int(periods))
+        price_data = [candle[4] for candle in past_candles]
         indicator_value = calculate_ema(price_data) 
         indicator_value = calculate_ema(price_data)  # You need to implement calculate_ema
     # Calculate the indicator value
     elif 'Tom Demark' in middleTwo:
-        price_data = ohlcv_buffer[-20:]  # Assuming 20 is the max candles you want
+        price_data = get_past_candles(exchange, symbol, timeframe, 20)  # Assuming 20 is the max candles you want
         td_sequence = tom_demark_sequence(price_data, int(periods))
         if "buy" in td_sequence.lower():
             indicator_value = "buy"
@@ -437,13 +454,13 @@ def evaluate_indicator_realtime(indicator_type, middleTwo, operation, ohlcv_buff
         else:
             indicator_value = "neutral"
     elif 'Bollinger Bands' in middleTwo:
-        price_data = [candle[4] for candle in ohlcv_buffer[-20:]]
+        price_data = get_past_candles(exchange, symbol, timeframe, 20)
         indicator_value = bollinger_band_position(price_data, periods)
     elif 'Price' in middleTwo:
         print ("Indicator Type")
         indicator_value=latest_price
     elif 'Keltner Channel' in middleTwo:
-        price_data = ohlcv_buffer[-int(periods):]
+        price_data = get_past_candles(exchange, symbol, timeframe, 20)
         basis, upper, lower = keltner_channels(price_data, int(periods))
 
         if "Upper Band" in middleTwo:
@@ -520,24 +537,58 @@ def map_order_to_mongo_doc(order, strategy_id, user_id):
     return mongo_doc
 
 
-def place_order_with_retry(symbol, orderType, action, quantity,exchange, retries=1):
-    for _ in range(retries):
-        try:
-            order = exchange.create_order(
-                symbol,
-                orderType,
-                action,
-                str(round(quantity, 3))
-            )
-            return order  # Return the order object if successful
-        except Exception as e:
-            print(f"Error placing order (attempt {_ + 1}): {e}")
-            logs += "Error Placing order Retrying"
-            time.sleep(1)  # Optional: Add a short delay between attempts
-    return None  # Return None if all attempts failed
+def place_order_with_retry(symbol, orderType, action, quantity,exchange,order_placed,sell_order_ids, retries=1,price=None,sell_amount=None):
+    # for _ in range(retries):
+    #     try:
+    if action == "BUY":
+        order = exchange.create_order(
+            symbol,
+            orderType,
+            action,
+            str(quantity)
+        )
+        order_placed==True
+    
+    if action == "SELL":
+        print ("amounttt",str(sell_amount))
+        order = exchange.create_order(
+        symbol,
+        "limit",
+        action,
+        str(sell_amount),
+        price,
+    )
+        sell_order_ids.add(order['id'])
+        
+    return order,order_placed  # Return the order object if successful
+    #     except Exception as e:
+    #         print(f"Error placing order (attempt {_ + 1}): {e}")
+    #         logs += "Error Placing order Retrying"
+    #         time.sleep(1)  # Optional: Add a short delay between attempts
+    # return None,False  # Return None if all attempts failed
 
 def calculate_take_profit_price(buy_price, take_profit_percentage):
     return buy_price * (1 + take_profit_percentage / 100)
+
+def get_open_orders(symbol,exchange):
+    try:
+        return exchange.fetch_open_orders(symbol)
+    except Exception as e:
+        print(f"Error fetching open orders: {e}")
+        return []
+
+def cancel_order(symbol, order_id,exchange):
+    try:
+        exchange.cancel_order(order_id, symbol)
+    except Exception as e:
+        print(f"Error cancelling order {order_id}: {e}")
+
+def cancel_bot_sell_orders(symbol,exchange,sell_order_ids):
+    open_orders = get_open_orders(symbol,exchange)
+    for order in open_orders:
+        if order['side'] == 'sell' and order['id'] in sell_order_ids:
+            cancel_order(symbol, order['id'],exchange)
+            sell_order_ids.remove(order['id'])
 
 def lambda_function(client,bot_id, bot_name, bot_type, description, 
         exchange_id, exchange_name, exchange_type, api_key, secret_key, user_id,
@@ -645,9 +696,11 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
 
     ProfitType=do['takeProfit']['takeProfit']
     take_profit_percentage=0
+    print("TAKEEE PROFIITT: ",do['takeProfit']['minTakeProfit'])
     try:
-        if (do['takeProfit']=='Fixed'):
-            take_profit_percentage = float(do['takeProfitPercent'])/100
+        if (do['takeProfit']['takeProfit']=='Fixed'):
+            print("TAKEEE PROFIITT: ",do['takeProfit']['minTakeProfit'])
+            take_profit_percentage = float(do['takeProfit']['minTakeProfit'])
     except:
         print("No Tp set")
  
@@ -686,7 +739,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
             
 
         })
-    elif (ex_type == "Binance Spot"):
+    elif (ex_type == "Binance spot"):
         print ("YALLAAHHH")
         exchange = ccxt.binance({
             'apiKey': APIKEY,
@@ -717,7 +770,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     print (timeframe_vector)
     print(buyOn, type(buyOn))
 
-    
+    sell_order_ids = set()
     logs= str(order_size)+'<br />'+str(safety_order)+'<br />'+str(multiplier)+'<br />'+str(max_buy_orders)+'<br />'+str(timeframe)+'<br />'+str(orderType)+'<br />'+str(red_action)+'<br />'+str(purple_action)+'<br />'+str(blue_action)+'<br />'+str(green_action)+'<br />'
     bots_collection = collection['bots']
     update_operation = {"$set": {"logs": logs}}
@@ -767,7 +820,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
             print("Error")
             print (e)
         try:
-            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,10)
+            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,11)
             ohlcv = psvra_candles[-2]
             timestamp, open_prices, high, low, close, volume = ohlcv
             update_buffer(ohlcv_buffer, ohlcv)
@@ -815,8 +868,8 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
                     if ("(Vol >" in param['middleOne']):
                         candle_condition = evaluate_candlestick(param[str(j*2+1)], param['middleOne'],psvra_candles,ohlcv)
                     else:
-                        candle_condition = evaluate_indicator_realtime(param[str(j*2+1)], param['middleOne'], param['operation'],ohlcv_buffer,close)
-                    indicator_condition = evaluate_indicator_realtime(param[str(j*2+2)], param['middleTwo'], param['operation'],ohlcv_buffer,close)
+                        candle_condition = evaluate_indicator_realtime(param[str(j*2+1)], param['middleOne'], param['operation'],close,psvra_candles[8],exchange,symbol,timeframe)
+                    indicator_condition = evaluate_indicator_realtime(param[str(j*2+2)], param['middleTwo'], param['operation'],close,psvra_candles[8],exchange,symbol,timeframe)
 
                     # current_condition = candle_condition and indicator_condition
                     if (candle_condition and indicator_condition):
@@ -831,6 +884,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
                     #     should_buy = current_condition
 
                 # return
+                print(trueConditions)
                 should_buy = trueConditions[0]
 
                 for j in range(1, len(trueConditions)):
@@ -852,65 +906,103 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
                                 first_order_candle_body_price = open_prices
                                 first_order_candle_wick_price = high
                             # Place a custom order
+                            if (len(buy_orders) >0):
+                                cancel_bot_sell_orders(symbol,exchange,sell_order_ids) 
                             order_placed = False
                             retries = 1
-                            for _ in range(retries):
-                                try:
-                                    order = exchange.create_order(
-                                        symbol,
-                                        orderType,
-                                        action,
-                                        str(round((float(current_order_size) / close), 3))
-                                    )
-                                    order_placed = True
-                                    break
-                                except Exception as e:
-                                    print(f"Error placing order (attempt {_ + 1}): {e}")
-                                    logs+="Error Placing order Retrying"
-                                    time.sleep(1)  # Optional: Add a short delay between attempts
+                            # Main logic
+                            buy_order_quantity = (float(current_order_size) / close)
+                            buy_order_quantity = buy_order_quantity * (1+0.001)
+                            # Place the buy order
+                            print("placing order for amount: ",buy_order_quantity)
+                            buy_order,order_placed = place_order_with_retry(symbol, orderType, "BUY", buy_order_quantity,exchange,order_placed,sell_order_ids)
 
-                            if order_placed:
-                                print (order)
+                            if buy_order!= None:
+                                print (buy_order)
+                                buy_orders.append(buy_order)
+                                if ProfitType == "Fixed":
+                                    # Cancel existing sell orders
+                                    
+                                    # Calculate new average buy price
+                                    # Note: This step might be more complex based on your holdings and order history.
+                                    # Here, I'm simplifying by using the recent buy order price. Adjust as needed.
+                                    total_price = 0
+                                    total_filled = 0
+                                    total_tickers_bought = 0
+                                    # print ("Checking profit")
+                                    for order in buy_orders:
+                                        order_id = order['id']
+                                        try:
+                                            order_data = exchange.fetch_order(order_id, symbol)
+                                        except Exception as e:
+                                            print(e)
+                                            continue
+
+                                        if order_data['status'] == 'closed':
+                                            total_price += order_data['average'] * order_data['filled']
+                                            total_filled += order_data['filled']
+                                            total_tickers_bought += order_data['filled']
+
+                                    if total_filled > 0:
+                                        avg_price = total_price / total_filled
+                                    else:
+                                        avg_price = 0
+                                    # print ("Total filled: ", total_filled)
+                                    # print ("Average price: ", avg_price)
+                                    try:
+                                        current_price = exchange.fetch_ticker(symbol)['last']
+                                    except Exception as e:
+                                        print(e)
+                                    average_buy_price = avg_price  # Assuming 'close' is your buy price
+                                    
+                                    # Calculate sell price for take profit
+                                    adjusted_sell_amount = total_filled * (1 - 0.05)
+                                    # adjusted_sell_amount = adjusted_sell_amount * (1 - 0.001)
+                                    sell_price = calculate_take_profit_price(average_buy_price, float(take_profit_percentage))
+                                    print("Sell order placed at avg price of: ",average_buy_price," At ",sell_price," ",take_profit_percentage," Amount: ",adjusted_sell_amount)
+                                    # Place new take profit sell order
+                                    
+                                    sell_order = place_order_with_retry(symbol, orderType, "SELL", buy_order_quantity,exchange,order_placed,sell_order_ids, price=sell_price,sell_amount=adjusted_sell_amount)
                                 order_counter += 1
                                 collection = client['test']
-                                if (ex_type == "Binance Spot"):
-                                        mongo_doc = map_order_to_mongo_doc(order, bot_id, user_id)
-                                else:
-                                    mongo_doc = {
-                                    "_id": order["info"]["orderId"],
-                                    "symbol": order["info"]["symbol"],
-                                    "status": order["info"]["status"],
-                                    "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
-                                    "executedQty": {"$numberDouble": order["info"]["executedQty"]},
-                                    "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
-                                    "timeInForce": order["info"]["timeInForce"],
-                                    "type": order["info"]["type"],
-                                    "side": order["info"]["side"],
-                                    "price": {"$numberInt": order["price"]},
-                                    "cost": {"$numberDouble": order["cost"]},
-                                    "average": {"$numberInt": order["average"]},
-                                    "filled": {"$numberDouble": order["filled"]},
-                                    "remaining": {"$numberInt": order["remaining"]},
-                                    "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
-                                    "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
-                                    "strategyId": {"$oid": bot_id},  # assuming a static value for this example
-                                    "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
-                                    "__v": {"$numberInt": "0"},
-                                    "userId": {"$oid": user_id}, }
+                                # if (ex_type == "Binance Spot"):
+                                #         mongo_doc = map_order_to_mongo_doc(order, bot_id, user_id)
+                                # else:
+                                #     mongo_doc = {
+                                #     "_id": order["info"]["orderId"],
+                                #     "symbol": order["info"]["symbol"],
+                                #     "status": order["info"]["status"],
+                                #     "avgPrice": {"$numberInt": order["info"]["avgPrice"]},
+                                #     "executedQty": {"$numberDouble": order["info"]["executedQty"]},
+                                #     "cumQuote": {"$numberDouble": order["info"]["cumQuote"]},
+                                #     "timeInForce": order["info"]["timeInForce"],
+                                #     "type": order["info"]["type"],
+                                #     "side": order["info"]["side"],
+                                #     "price": {"$numberInt": order["price"]},
+                                #     "cost": {"$numberDouble": order["cost"]},
+                                #     "average": {"$numberInt": order["average"]},
+                                #     "filled": {"$numberDouble": order["filled"]},
+                                #     "remaining": {"$numberInt": order["remaining"]},
+                                #     "totalProfit": {"$numberDouble": 0.0},  # Assuming 0.0 for this example
+                                #     "runDateTime": {"$date": {"$numberLong": order["info"]["updateTime"]}},
+                                #     "strategyId": {"$oid": bot_id},  # assuming a static value for this example
+                                #     "created": {"$date": {"$numberLong": str(int(datetime.now().timestamp() * 1000))}},
+                                #     "__v": {"$numberInt": "0"},
+                                #     "userId": {"$oid": user_id}, }
                                 
-                                orders=collection['orders']
-                                orders.insert_one(mongo_doc)
-                                if action == 'buy':
-                                    buy_orders.append(order)
-                                    print (order)
-                                elif action == 'sell':
-                                    sell_orders.append(order)
+                                # orders=collection['orders']
+                                # orders.insert_one(mongo_doc)
+                                # if action == 'buy':
+                                #     buy_orders.append(buy_order)
+                                    
+                                # elif action == 'sell':
+                                #     sell_orders.append(order)
                                 if len(buy_orders) == 1:
                                     current_order_size = safety_order
                                 elif len(buy_orders) >1:
                                     current_order_size *= multiplier
                                 logs += str(action.capitalize()) + " order placed: " + str(close) + " for " + str(current_order_size) + '\n'
-                                logs += "Order Filled for " + str(order['price'])+"\n"
+                                logs += "Order Filled for " + str(buy_order['price'])+"\n"
                             else:
                                     print(f"Failed to place {action} order after {retries} attempts")
 
@@ -923,66 +1015,67 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
 
 
    
-        if (len (buy_orders)> 0):
-            total_price = 0
-            total_filled = 0
-            total_tickers_bought = 0
-            profit_condition_met = False
-            # print ("Checking profit")
-            for order in buy_orders:
-                order_id = order['id']
-                try:
-                    order_data = exchange.fetch_order(order_id, symbol)
-                except Exception as e:
-                    print(e)
-                    continue
+        # if (len (buy_orders)> 0):
+        #     total_price = 0
+        #     total_filled = 0
+        #     total_tickers_bought = 0
+        #     profit_condition_met = False
+        #     # print ("Checking profit")
+        #     for order in buy_orders:
+        #         order_id = order['id']
+        #         try:
+        #             order_data = exchange.fetch_order(order_id, symbol)
+        #         except Exception as e:
+        #             print(e)
+        #             continue
 
-                if order_data['status'] == 'closed':
-                    total_price += order_data['average'] * order_data['filled']
-                    total_filled += order_data['filled']
-                    total_tickers_bought += order_data['filled']
+        #         if order_data['status'] == 'closed':
+        #             total_price += order_data['average'] * order_data['filled']
+        #             total_filled += order_data['filled']
+        #             total_tickers_bought += order_data['filled']
 
-            if total_filled > 0:
-                avg_price = total_price / total_filled
-            else:
-                avg_price = 0
-            # print ("Total filled: ", total_filled)
-            # print ("Average price: ", avg_price)
-            try:
-                current_price = exchange.fetch_ticker(symbol)['last']
-            except Exception as e:
-                print(e)
+        #     if total_filled > 0:
+        #         avg_price = total_price / total_filled
+        #     else:
+        #         avg_price = 0
+        #     # print ("Total filled: ", total_filled)
+        #     # print ("Average price: ", avg_price)
+        #     try:
+        #         current_price = exchange.fetch_ticker(symbol)['last']
+        #     except Exception as e:
+        #         print(e)
 
-            take_profit = False
-            if ProfitType == 'Fixed' and avg_price>0:
-                profit = (current_price - avg_price) / avg_price
-                take_profit = profit >= take_profit_percentage
-            elif ProfitType == 'At candle body':
-                # print ("Profit check: ", current_price,first_order_candle_body_price)
-                profit = (current_price - first_order_candle_body_price) / first_order_candle_body_price
-                take_profit = current_price >= first_order_candle_body_price
-            elif ProfitType == 'At candle wick':
-                take_profit = current_price >= first_order_candle_wick_price
-                profit = (current_price - first_order_candle_wick_price) / first_order_candle_wick_price
+        #     take_profit = False
+        #     if ProfitType == 'Fixed' and avg_price>0:
+        #         profit = (current_price - avg_price) / avg_price
+        #         take_profit = profit >= take_profit_percentage
+        #     elif ProfitType == 'At candle body':
+        #         # print ("Profit check: ", current_price,first_order_candle_body_price)
+        #         profit = (current_price - first_order_candle_body_price) / first_order_candle_body_price
+        #         take_profit = current_price >= first_order_candle_body_price
+        #     elif ProfitType == 'At candle wick':
+        #         take_profit = current_price >= first_order_candle_wick_price
+        #         profit = (current_price - first_order_candle_wick_price) / first_order_candle_wick_price
 
-            if take_profit:
-                profit_condition_met = True  # Set flag to True if profit condition is met for any order
+        #     if take_profit:
+        #         profit_condition_met = True  # Set flag to True if profit condition is met for any order
 
-            # After loop, check if profit condition was met for any order
-            if profit_condition_met:
-                # Take profit
-                profit_condition_met=False
-                tickerAmount = total_tickers_bought - (total_tickers_bought * 0.001)
-                print(f"Taking profit: ",tickerAmount)
-                try:
-                    sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
-                    sell_orders.append(sell_order)
-                    order_counter=0
-                    buy_orders=[]
-                    # logs += "Taking profit: " + str(sell_order)
-                    # Rest of your sell order code...
-                except Exception as e:
-                    print ("Error in Taking profit: ", e)
+        #     # After loop, check if profit condition was met for any order
+        #     if profit_condition_met:
+        #         # Take profit
+        #         profit_condition_met=False
+        #         tickerAmount = total_tickers_bought - (total_tickers_bought * 0.001)
+        #         print(f"Taking profit: ",tickerAmount)
+        #         try:
+        #             sell_order = exchange.create_order(symbol, orderType, 'sell', tickerAmount)
+        #             sell_orders.append(sell_order)
+        #             order_counter=0
+        #             buy_orders=[]
+        #             # logs += "Taking profit: " + str(sell_order)
+        #             # Rest of your sell order code...
+        #         except Exception as e:
+        #             print ("Error in Taking profit: ", e)
+        
         if (len(logs)>2):
             print (logs)
             collection = client['test']
@@ -1175,7 +1268,7 @@ def backtesting(client,strategy_id):
     take_profit_percentage=0
     try:
         if (do['takeProfit']['takeProfit']=='Fixed'):
-            take_profit_percentage = float(do['takeProfit']['minTakeProfit'])/100
+            take_profit_percentage = float(do['takeProfit']['takeProfit']['minTakeProfit'])/100
     except:
         print("No Tp set")
     print ("Profit Required: ",take_profit_percentage)
@@ -1412,5 +1505,44 @@ def backtesting(client,strategy_id):
 
 # 644f90f5b40d77067c660398
 # client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# data = {
+#     "_id": {"$oid": "64e60bc341b837f7c4b20945"},
+#     "botName": "1 min vector red",
+#     "botType": "Long",
+#     "description": "none",
+#     "exchange": "79",
+#     "strategyId": [{"$oid": "64e60b5f41b837f7c4b2093d"}],
+#     "timeFrame": "1m",
+#     "user": {
+#         "email": "bazilsb7@gmail.com",
+#         "id": {"$numberInt": "4"},
+#         "firstName": "Bazil",
+#         "lastName": "Sajjad",
+#         "accountVerified": True
+#     },
+#     "state": "off",
+#     "__v": {"$numberInt": "0"}
+# }
 
+# strategy_ids=[strategy['$oid'] for strategy in data['strategyId']]
+# lambda_function(
+#     client,  # dummy value, as it's not present in the object
+#     bot_id=data['_id']['$oid'],
+#     bot_name=data['botName'],
+#     bot_type=data['botType'],
+#     description=data['description'],
+#     exchange_id=data['exchange'],  # Assuming exchange here is the exchange id
+#     exchange_name='Binance spot',  # dummy value, as it's not present in the object
+#     exchange_type=None,  # dummy value, as it's not present in the object
+#     api_key='5vypWbe7Cz6FclJdaMps5zzn0qdXe59i56UtUKYo5CXvI7rQBdk2DXiAMh8Qe3IX',  # dummy value, as it's not present in the object
+#     secret_key='PvxSbXPJIFfgUz5ckPZmFLPnDXxLKZbfncMPNLBf2envQKo4FcP0edq4MoGR9kQS',  # dummy value, as it's not present in the object
+#     user_id=data['user']['id']['$numberInt'],
+#     strategy_ids=strategy_ids[0],
+#     time_frame=data['timeFrame'],
+#     user_email=data['user']['email'],
+#     user_first_name=data['user']['firstName'],
+#     user_last_name=data['user']['lastName'],
+#     account_verified=data['user']['accountVerified'],
+#     state=data['state']
+# )
 # lambda_function( client, '647b2028b5fc7d7b9aa74359')
