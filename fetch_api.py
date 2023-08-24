@@ -752,7 +752,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
             
 
         })
-    elif (ex_type == "Binance spot"):
+    elif (ex_type == "Binance Spot"):
         print ("YALLAAHHH")
         exchange = ccxt.binance({
             'apiKey': APIKEY,
