@@ -106,13 +106,13 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
     
     print ("Close: ",pvsra_close[8],"| Open",open_prices[8])
     if pvsra_close[8] >= open_prices[8]:
-        va = 'RVC' #GC
+        va = 'GC' #GC
         if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'BVC'
         elif pvsra_volume[8] > av * 2:
             va = 'GVC'
     else:
-        va = 'RVC' #RC
+        va = 'RC' #RC
         if av * 1.5 <= pvsra_volume[8] <= av * 2:
             va = 'PVC'
         elif pvsra_volume[8] > av * 2:
