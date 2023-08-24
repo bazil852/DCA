@@ -102,32 +102,35 @@ def fetch_ohlcv_my(exchange, symbol, timeframe, limit=5000):
     return ohlcv_list
 
 def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, high, open_prices, low, pvsra_close, close):
-    av = sum(pvsra_volume) / 10 if overridesym else sum(volume) / 10
+    av = sum(pvsra_volume[:-1]) / 10 if overridesym else sum(volume[:-1]) / 10  # Exclude the current unclosed candle for average volume
     
     # Calculate spread x volume product for the current candle
-    current_product = (pvsra_high[8] - pvsra_low[8]) * pvsra_volume[8]
+    current_product = (pvsra_high[9] - pvsra_low[9]) * pvsra_volume[9]
     
-    # Calculate spread x volume product for the last 10 candles
-    last_10_products = [(pvsra_high[i] - pvsra_low[i]) * pvsra_volume[i] for i in range(8-10, 8)]
+    # Calculate spread x volume product for the last 10 candles (excluding the unclosed one)
+    last_10_products = [(pvsra_high[i] - pvsra_low[i]) * pvsra_volume[i] for i in range(9-10, 9)]
     
     # Determine if the current product is a climax based on the last 10 products
     is_climax_by_product = current_product >= max(last_10_products)
-
-    print ("Close: ",pvsra_close[8],"| Open",open_prices[8])
-    if pvsra_close[8] >= open_prices[8]:
-        va = 'GC' # Green Candle
-        if (av * 1.5 <= pvsra_volume[8] <= av * 2) or is_climax_by_product:
-            va = 'BVC'  # Blue Volume Climax
-        elif pvsra_volume[8] > av * 2:
-            va = 'GVC'  # Green Volume Climax
-    else:
-        va = 'RC'  # Red Candle
-        if (av * 1.5 <= pvsra_volume[8] <= av * 2) or is_climax_by_product:
-            va = 'PVC'  # Purple Volume Climax
-        elif pvsra_volume[8] > av * 2:
-            va = 'RVC'  # Red Volume Climax
+    print("Close:", pvsra_close[9], "| Open", open_prices[9],)
+    if pvsra_close[9] >= open_prices[9]:  # Bullish candle
+        if av * 1.5 <= pvsra_volume[9] < av * 2 and not is_climax_by_product:
+            va = 'BVC'  # Blue Vector Climax
+        elif pvsra_volume[9] >= av * 2 or is_climax_by_product:
+            va = 'GVC'  # Green Vector Climax
+        else:
+            va = 'GC'  # Regular Green Candle
+    else:  # Bearish candle
+        if av * 1.5 <= pvsra_volume[9] < av * 2 and not is_climax_by_product:
+            va = 'PVC'  # Purple Vector Climax
+        elif pvsra_volume[9] >= av * 2 or is_climax_by_product:
+            va = 'RVC'  # Red Vector Climax
+        else:
+            va = 'RC'  # Regular Red Candle
     
     return va, av
+
+
 
 
 
@@ -714,7 +717,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     except:
         print("No Tp set")
  
-    ex_type = exchange_name
+    ex_type = exchange_type
     APIKEY= api_key
     APISECRET= secret_key
     print (ex_type)
@@ -830,7 +833,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
             print("Error")
             print (e)
         try:
-            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,10)
+            psvra_candles=fetch_with_retry(exchange, symbol, timeframe,11)
             ohlcv = psvra_candles[-2]
             timestamp, open_prices, high, low, close, volume = ohlcv
             update_buffer(ohlcv_buffer, ohlcv)
