@@ -576,7 +576,7 @@ def place_order_with_retry(symbol, orderType, action, quantity,exchange,order_pl
         return order,order_placed  # Return the order object if successful
     except Exception as e:
         print(f"Error placing order (attempt")
-        logs += "Error Placing order Retrying"
+        # logs += "Error Placing order Retrying"
         time.sleep(1)  # Optional: Add a short delay between attempts
         return None,False  # Return None if all attempts failed
 
