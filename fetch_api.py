@@ -552,33 +552,33 @@ def map_order_to_mongo_doc(order, strategy_id, user_id):
 
 def place_order_with_retry(symbol, orderType, action, quantity,exchange,order_placed,sell_order_ids, retries=1,price=None,sell_amount=None):
     # for _ in range(retries):
-    #     try:
-    if action == "BUY":
-        order = exchange.create_order(
-            symbol,
-            orderType,
-            action,
-            str(quantity)
-        )
-        order_placed==True
-    
-    if action == "SELL":
-        print ("amounttt",str(sell_amount))
-        order = exchange.create_order(
-        symbol,
-        "limit",
-        action,
-        str(sell_amount),
-        price,
-    )
-        sell_order_ids.add(order['id'])
+    try:
+        if action == "BUY":
+            order = exchange.create_order(
+                symbol,
+                orderType,
+                action,
+                str(quantity)
+            )
+            order_placed==True
         
-    return order,order_placed  # Return the order object if successful
-    #     except Exception as e:
-    #         print(f"Error placing order (attempt {_ + 1}): {e}")
-    #         logs += "Error Placing order Retrying"
-    #         time.sleep(1)  # Optional: Add a short delay between attempts
-    # return None,False  # Return None if all attempts failed
+        if action == "SELL":
+            print ("amounttt",str(sell_amount))
+            order = exchange.create_order(
+            symbol,
+            "limit",
+            action,
+            str(sell_amount),
+            price,
+        )
+            sell_order_ids.add(order['id'])
+        
+        return order,order_placed  # Return the order object if successful
+    except Exception as e:
+        print(f"Error placing order (attempt")
+        logs += "Error Placing order Retrying"
+        time.sleep(1)  # Optional: Add a short delay between attempts
+        return None,False  # Return None if all attempts failed
 
 def calculate_take_profit_price(buy_price, take_profit_percentage):
     return buy_price * (1 + take_profit_percentage / 100)
@@ -625,7 +625,7 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
     symbol = do['orders']['pairs']
     position = 'long'
     timeframe = time_frame
-    multiplier = do['dca']['stepMultiplier']
+    multiplier = do['dca']['volumeMultiplier']
     stratType= 'LONG'
     orderType=do['orders']['orderType']
     profitC='USDT'
