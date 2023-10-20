@@ -1549,7 +1549,7 @@ def backtesting(client,strategy_id):
 #     bot_type=data['botType'],
 #     description=data['description'],
 #     exchange_id=data['exchange'],  # Assuming exchange here is the exchange id
-#     exchange_name='Binance Futures Test',  # dummy value, as it's not present in the object
+#     exchange_name='Binance S',  # dummy value, as it's not present in the object
 #     exchange_type='Binance Futures Test',  # dummy value, as it's not present in the object
 #     api_key='99768ccdd173118886404b103dbd24875ead769d651c3d0c1143c031e0fd9e2a',  # dummy value, as it's not present in the object
 #     secret_key='f332768806f2aed54f85ec6b055516e8bf23f31cfef5ec874a3af7ee07daf4da',  # dummy value, as it's not present in the object

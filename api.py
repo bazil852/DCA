@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 # import pymongo
 import fetch_api
 import pymongo
@@ -54,32 +54,34 @@ class BotStartPayload(BaseModel):
 
 
 @app.post("/start")
-async def start_bot(payload: BotStartPayload):
+async def start_bot(request: Request):
     # Extract data from the incoming payload
-    bot_id = payload.id
-    bot_name = payload.botName
-    bot_type = payload.botType
-    description = payload.description
-    exchange_data = payload.exchange
-    strategy_ids = payload.strategyId
-    time_frame = payload.timeFrame
-    user_data = payload.user
-    state = payload.state
+    payload = await request.json()
+    print("Working: ",payload)
+    bot_id = payload.get('_id')
+    bot_name = payload.get('botName')
+    bot_type = payload.get('botType')
+    description = payload.get('description')
+    exchange_data = payload.get('exchange')
+    strategy_ids = payload.get('strategyId')
+    time_frame = payload.get('timeFrame')
+    user_data = payload.get('user')
+    state = payload.get('state')
 
 
     # Parsing exchange details
-    exchange_id = exchange_data.id
-    exchange_name = exchange_data.exchange_name
-    exchange_type = exchange_data.exchange_type
-    api_key = exchange_data.api_key
-    secret_key = exchange_data.secret_key
-    user_id = exchange_data.user_id
+    exchange_id = exchange_data.get('id')
+    exchange_name = exchange_data.get('exchange_name')
+    exchange_type = exchange_data.get('exchange_type')
+    api_key = exchange_data.get('api_key')
+    secret_key = exchange_data.get('secret_key')
+    user_id = exchange_data.get('user_id')
 
     # Parsing user details
-    user_email = user_data.email
-    user_first_name = user_data.firstName
-    user_last_name = user_data.lastName
-    account_verified = user_data.accountVerified
+    user_email = user_data.get('email')
+    user_first_name = user_data.get('firstName')
+    user_last_name = user_data.get('lastName')
+    account_verified = user_data.get('accountVerified')
 
     # Given the bot might use multiple strategies, we can iterate over strategy_ids
     
