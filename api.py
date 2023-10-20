@@ -22,9 +22,6 @@ app.add_middleware(
 )
 
 
-
-
-
 class StrategyIdPayload(BaseModel):
     strategyId: str
 
@@ -103,7 +100,7 @@ async def run_backtest(payload: Dict[Any, Any]):
     # set up connection to MongoDB Cloud
     client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
 
-    result = fetch_api.backtesting(client, strategy_id)
+    result = run_backtest.delay(client, strategy_id)
     
     return result
 
