@@ -119,14 +119,14 @@ def pvsra_indicator(overridesym, pvsra_volume, volume, pvsra_high, pvsra_low, hi
         elif pvsra_volume[9] >= av * 2 or is_climax_by_product:
             va = 'GVC'  # Green Vector Climax
         else:
-            va = 'RVC'  # Regular Green Candle
+            va = 'GC'  # Regular Green Candle
     else:  # Bearish candle
         if av * 1.5 <= pvsra_volume[9] < av * 2 and not is_climax_by_product:
             va = 'PVC'  # Purple Vector Climax
         elif pvsra_volume[9] >= av * 2 or is_climax_by_product:
             va = 'RVC'  # Red Vector Climax
         else:
-            va = 'RVC'  # Regular Red Candle
+            va = 'RC'  # Regular Red Candle
     
     return va, av
 
