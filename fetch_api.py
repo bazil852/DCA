@@ -1521,45 +1521,45 @@ def backtesting(client,strategy_id):
 
 
 # 644f90f5b40d77067c660398
-client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
-data = {
-    "_id": {"$oid": "64e60bc341b837f7c4b20945"},
-    "botName": "1 min vector red",
-    "botType": "Long",
-    "description": "none",
-    "exchange": "79",
-    "strategyId": [{"$oid": "64e60b5f41b837f7c4b2093d"}],
-    "timeFrame": "1m",
-    "user": {
-        "email": "bazilsb7@gmail.com",
-        "id": {"$numberInt": "4"},
-        "firstName": "Bazil",
-        "lastName": "Sajjad",
-        "accountVerified": True
-    },
-    "state": "off",
-    "__v": {"$numberInt": "0"}
-}
+# client = pymongo.MongoClient('mongodb+srv://Prisoner479:DMCCODbo3456@testing.qsndjab.mongodb.net/?retryWrites=true&w=majority')
+# data = {
+#     "_id": {"$oid": "64e60bc341b837f7c4b20945"},
+#     "botName": "1 min vector red",
+#     "botType": "Long",
+#     "description": "none",
+#     "exchange": "79",
+#     "strategyId": [{"$oid": "64e60b5f41b837f7c4b2093d"}],
+#     "timeFrame": "1m",
+#     "user": {
+#         "email": "bazilsb7@gmail.com",
+#         "id": {"$numberInt": "4"},
+#         "firstName": "Bazil",
+#         "lastName": "Sajjad",
+#         "accountVerified": True
+#     },
+#     "state": "off",
+#     "__v": {"$numberInt": "0"}
+# }
 
-strategy_ids=[strategy['$oid'] for strategy in data['strategyId']]
-lambda_function(
-    client,  # dummy value, as it's not present in the object
-    bot_id=data['_id']['$oid'],
-    bot_name=data['botName'],
-    bot_type=data['botType'],
-    description=data['description'],
-    exchange_id=data['exchange'],  # Assuming exchange here is the exchange id
-    exchange_name='Binance S',  # dummy value, as it's not present in the object
-    exchange_type='Binance Futures Test',  # dummy value, as it's not present in the object
-    api_key='99768ccdd173118886404b103dbd24875ead769d651c3d0c1143c031e0fd9e2a',  # dummy value, as it's not present in the object
-    secret_key='f332768806f2aed54f85ec6b055516e8bf23f31cfef5ec874a3af7ee07daf4da',  # dummy value, as it's not present in the object
-    user_id=data['user']['id']['$numberInt'],
-    strategy_ids=strategy_ids[0],
-    time_frame=data['timeFrame'],
-    user_email=data['user']['email'],
-    user_first_name=data['user']['firstName'],
-    user_last_name=data['user']['lastName'],
-    account_verified=data['user']['accountVerified'],
-    state=data['state']
-)
+# strategy_ids=[strategy['$oid'] for strategy in data['strategyId']]
+# lambda_function(
+#     client,  # dummy value, as it's not present in the object
+#     bot_id=data['_id']['$oid'],
+#     bot_name=data['botName'],
+#     bot_type=data['botType'],
+#     description=data['description'],
+#     exchange_id=data['exchange'],  # Assuming exchange here is the exchange id
+#     exchange_name='Binance S',  # dummy value, as it's not present in the object
+#     exchange_type='Binance Futures Test',  # dummy value, as it's not present in the object
+#     api_key='99768ccdd173118886404b103dbd24875ead769d651c3d0c1143c031e0fd9e2a',  # dummy value, as it's not present in the object
+#     secret_key='f332768806f2aed54f85ec6b055516e8bf23f31cfef5ec874a3af7ee07daf4da',  # dummy value, as it's not present in the object
+#     user_id=data['user']['id']['$numberInt'],
+#     strategy_ids=strategy_ids[0],
+#     time_frame=data['timeFrame'],
+#     user_email=data['user']['email'],
+#     user_first_name=data['user']['firstName'],
+#     user_last_name=data['user']['lastName'],
+#     account_verified=data['user']['accountVerified'],
+#     state=data['state']
+# )
 # lambda_function( client, '647b2028b5fc7d7b9aa74359')
