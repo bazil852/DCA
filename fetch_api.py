@@ -1088,10 +1088,10 @@ def lambda_function(client,bot_id, bot_name, bot_type, description,
                         logs += "buy on condition ignore : " + str(conditions_hit)+"%"+str(buyOn)+"="+str((conditions_hit)% int (buyOn)) + '\n'
                         logs += "price returned by Price check " + str(price_check(buy_orders,close))+'\n'
         
-
-        order_check=check_and_replace_sell_orders(symbol,exchange,sell_order_ids,buy_orders)
-        if (order_check==False):
-            max_buy_orders=0
+        if (len(buy_orders)>0):
+            order_check=check_and_replace_sell_orders(symbol,exchange,sell_order_ids,buy_orders)
+            if (order_check==False):
+                max_buy_orders=0
         if (len(logs)>2):
             print (logs)
             collection = client['test']
@@ -1549,10 +1549,10 @@ def backtesting(client,strategy_id):
 #     bot_type=data['botType'],
 #     description=data['description'],
 #     exchange_id=data['exchange'],  # Assuming exchange here is the exchange id
-#     exchange_name='Binance S',  # dummy value, as it's not present in the object
-#     exchange_type='Binance Futures Test',  # dummy value, as it's not present in the object
-#     api_key='99768ccdd173118886404b103dbd24875ead769d651c3d0c1143c031e0fd9e2a',  # dummy value, as it's not present in the object
-#     secret_key='f332768806f2aed54f85ec6b055516e8bf23f31cfef5ec874a3af7ee07daf4da',  # dummy value, as it's not present in the object
+#     exchange_name='spot',  # dummy value, as it's not present in the object
+#     exchange_type='Binance Spot',  # dummy value, as it's not present in the object
+#     api_key='5vypWbe7Cz6FclJdaMps5zzn0qdXe59i56UtUKYo5CXvI7rQBdk2DXiAMh8Qe3IX',  # dummy value, as it's not present in the object
+#     secret_key='PvxSbXPJIFfgUz5ckPZmFLPnDXxLKZbfncMPNLBf2envQKo4FcP0edq4MoGR9kQS',  # dummy value, as it's not present in the object
 #     user_id=data['user']['id']['$numberInt'],
 #     strategy_ids=strategy_ids[0],
 #     time_frame=data['timeFrame'],
