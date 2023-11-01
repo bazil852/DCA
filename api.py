@@ -57,7 +57,7 @@ class BotStartPayload(BaseModel):
 async def start_bot(request: Request):
     # Extract data from the incoming payload
     payload = await request.json()
-    print("Working: ",payload)
+    # print("Working: ",payload)
     bot_id = payload.get('_id')
     bot_name = payload.get('botName')
     bot_type = payload.get('botType')

@@ -5,7 +5,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-app = Celery("FAST", broker="amqps://fvaukbic:qz_Ee_AE_TH5EtnOhOSUqaVEZ6C4Wbpw@fish.rmq.cloudamqp.com/fvaukbic")
+app = Celery("FAST", broker="amqps://xtkvujcj:ce8VrWABVujkd9mRlQkVhVU2eaU7i1w1@whale.rmq.cloudamqp.com/xtkvujcj")
 
 # amqps://ouifibyf:V541bgbpT1dP6dQnOhHRy1yWJ97vdqmO@stingray.rmq.cloudamqp.com/ouifibyf
 # amqps://ouifibyf:V541bgbpT1dP6dQnOhHRy1yWJ97vdqmO@stingray.rmq.cloudamqp.com/ouifibyf
